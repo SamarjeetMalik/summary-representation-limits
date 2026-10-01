@@ -119,6 +119,8 @@ def compute():
     # KCDC arm: needs data/kcdc/kcdc_kascade_qgs4.npz (public KCDC download + convert_kcdc.py)
     if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_qgs4.npz')):
         run(os.path.join('kcdc', 'run_kcdc.py'), ANA, 'run_kcdc (~1 min on 32 cores)')
+        if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features.npz')):
+            run(os.path.join('kcdc', 'run_kcdc_floor.py'), ANA, 'run_kcdc_floor (~15 min)')
     else:
         print('  KCDC npz absent: skipping the KCDC arm (see analysis/kcdc/convert_kcdc.py)')
 

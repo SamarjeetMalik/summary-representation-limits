@@ -227,9 +227,35 @@ def fig_pipeline():
     save(fig, 'fig0_pipeline.pdf')
 
 
+def fig_kcdc_audit():
+    KF = json.load(open(os.path.join(ANA, 'kcdc', 'kcdc_floor_results.json')))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.6, 2.7), gridspec_kw={'width_ratios': [1, 1.15]})
+    L = KF['ladder']; x = np.arange(len(L))
+    a1.plot(x, [r['sigma'] for r in L], 'o-', color=BLUE, ms=4, lw=1.2)
+    a1.axhline(KF['floor']['nine'], color=GREEN, ls='--', lw=.9)
+    a1.text(-.2, KF['floor']['nine'], 'floor estimate, nine features', fontsize=6.6, color=GREEN, va='bottom')
+    a1.set_xticks(x); a1.set_xticklabels(['four fit\nparams', '+ zenith', '+ core\ndist.', '+ muon\nsize', '+ muon\nratio'],
+                                         fontsize=6.6)
+    a1.set_ylabel(SIG); a1.set_title('KASCADE information ladder', fontsize=8)
+    it = KF['intermediate']; labs = ['nine features'] + ['+ ' + k for k in it] + ['oracle: MC-true sizes']
+    vals = [KF['oracle']['sigma_nine']] + [v['sigma'] for v in it.values()] + [KF['oracle']['sigma_true_sizes']]
+    cols = [BLUE] + [ORANGE] * len(it) + [GREY]
+    yy = np.arange(len(labs))[::-1]
+    a2.barh(yy, vals, color=cols, alpha=.75, height=.6)
+    for yi, v in zip(yy, vals):
+        a2.text(v + .001, yi, '%.4f' % v, va='center', fontsize=6.4)
+    a2.set_yticks(yy); a2.set_yticklabels([l.replace('+ profiles + counts, totals, timing', '+ profiles, counts,\ntotals and timing')
+                                           for l in labs], fontsize=6.6)
+    a2.set_xlim(min(vals) * 0.9, max(vals) * 1.06); a2.set_xlabel(SIG)
+    a2.set_title('what the per-station signals add', fontsize=8)
+    fig.tight_layout()
+    save(fig, 'fig12_kcdc_audit.pdf')
+
+
 if __name__ == '__main__':
-    for f in (fig_pipeline, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage):
+    for f in (fig_pipeline, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage,
+              fig_kcdc_audit):
         try:
             f()
-        except KeyError as e:
+        except (KeyError, FileNotFoundError) as e:
             print('  %s skipped: results.json lacks %s' % (f.__name__, e))

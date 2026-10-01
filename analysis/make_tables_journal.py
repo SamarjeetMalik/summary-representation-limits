@@ -428,6 +428,72 @@ primary & %s \\
               'covProtonNinety': '%.1f' % gc['species']['proton'][gc['nominal'].index(0.90)],
               'covIronNinety': '%.1f' % gc['species']['iron'][gc['nominal'].index(0.90)]})
 
+KF_P = os.path.join(HERE, 'kcdc', 'kcdc_floor_results.json')
+if os.path.exists(KF_P):
+    KF = json.load(open(KF_P))
+    pl = KF['plateau']
+    rows = [r'%s & $%s$ \\' % ({'RandomForest': 'Random forest', 'GradBoost': 'Gradient boosting',
+                                'kNN (k=50)': r'$k$-nearest neighbours'}.get(k, k), f4(v)) for k, v in pl.items()]
+    rows += [r'\midrule', r'\emph{Estimated floor $\hat\sigma_{\mathrm{B}}$, nine features (Gamma test)} & $%s$ \\'
+             % f4(KF['floor']['nine']),
+             r'\emph{Gradient boosting, MC-true $N_{\mathrm{e}}$, $N_\mu$ (oracle)} & $%s$ \\' % f4(KF['oracle']['sigma_true_sizes'])]
+    write('j_kcdc_floor.tex', r"""\begin{table}[t]
+\centering\small
+\caption{The plateau on KASCADE (KCDC, QGSJET-II-04, $\lgE\in[5,6]$; %s events from %s showers,
+split by shower). Estimators on the nine reconstructed features, the Gamma-test floor estimate of
+the same features (neighbours restricted to other showers), and the Monte Carlo oracle in which
+the reconstructed electron and muon sizes are replaced by their true values.}
+\label{tab:kcdcfloor}
+\begin{tabular}{lc}
+\toprule
+Estimator or reference & $\sigma(\lgE)$ \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % ('{:,}'.format(KF['n_events']).replace(',', '{,}'), '{:,}'.format(KF['n_showers']).replace(',', '{,}'),
+       '\n'.join(rows)))
+    it = KF['intermediate']
+    rows = [r'nine reconstructed features & $%s$ & --- & --- \\' % f4(KF['oracle']['sigma_nine'])]
+    for k, v in it.items():
+        rows.append(r'$+$ %s & $%s$ & $%+.4f$ $[%+.4f, %+.4f]$ & $%.1f\%%$ \\' % (k, f4(v['sigma']), v['delta'], *v['ci'],
+                                                                              v['gap_recovered_pct']))
+    rows.append(r'\midrule')
+    rows.append(r'MC-true $N_{\mathrm{e}}$, $N_\mu$ (oracle) & $%s$ & --- & $100\%%$ \\' % f4(KF['oracle']['sigma_true_sizes']))
+    write('j_kcdc_intermediate.tex', r"""\begin{table}[t]
+\centering\small
+\caption{Intermediate representations on KASCADE, built from the per-station signals at the true
+detector positions and added to the nine features (gradient boosting, shower-disjoint split). The
+last column is the fraction of the gap between the nine features and the Monte Carlo oracle that
+each representation closes; intervals are paired bootstrap over test events.}
+\label{tab:kcdcinter}
+\begin{tabular}{lccc}
+\toprule
+Representation & $\sigma(\lgE)$ & $\Delta\sigma$ [95\%% interval] & gap closed \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % '\n'.join(rows))
+    best = min(it.values(), key=lambda v: v['sigma'])
+    nl = [r['rung'] for r in KF['ladder']]
+    pl_nl = [pl[k] for k in ('RandomForest', 'GradBoost', 'MLP')]
+    M.update({'kfNevents': '{:,}'.format(KF['n_events']).replace(',', '{,}'),
+              'kfGB': f4(pl['GradBoost']), 'kfRidge': f4(pl['Ridge']), 'kfSpread': f4(max(pl_nl) - min(pl_nl)),
+              'kfFloor': f4(KF['floor']['nine']), 'kfFloorOracle': f4(KF['floor']['oracle']),
+              'kfGapPct': '%.1f' % (100 * (pl['GradBoost'] - KF['floor']['nine']) / KF['floor']['nine']),
+              'kfOracle': f4(KF['oracle']['sigma_true_sizes']), 'kfNine': f4(KF['oracle']['sigma_nine']),
+              'kfBestGapPct': '%.1f' % best['gap_recovered_pct'], 'kfBestSigma': f4(best['sigma']),
+              'kfReconShare': '%.0f' % (100 * (1 - KF['oracle']['sigma_true_sizes'] ** 2 / KF['oracle']['sigma_nine'] ** 2))})
+    ld = {r['rung']: r for r in KF['ladder']}
+    M.update({'kfLadZen': '%.4f' % -ld['B']['delta'], 'kfLadMu': '%.4f' % -ld['D']['delta']})
+
+SMC = os.path.join(HERE, 'kcdc', 'station_mapping_check.json')
+if os.path.exists(SMC):
+    sm = json.load(open(SMC)); M['stationCorr'] = '%.2f' % min(sm['corr_x'], sm['corr_y'])
+
 # ------------------------------------------------------------- shower reuse
 SG = R.get('shower_groups')
 if SG:

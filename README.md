@@ -15,7 +15,9 @@ Anonymised for review. Every number, table and figure in the manuscript is gener
   collaboration on reasonable request. Not included here.
 * KASCADE simulation: public from the KASCADE Cosmic-ray Data Centre, https://kcdc.iap.kit.edu/
   (Simulations > QGSjet-II-04 > KASCADE, "download All"). Unzip into `data/kcdc/` and run
-  `python analysis/kcdc/convert_kcdc.py`.
+  `python analysis/kcdc/convert_kcdc.py` and `python analysis/kcdc/extract_stations.py`.
+  `analysis/kcdc/kascade_station_coordinates.csv` is Appendix A of the KCDC Simulation Manual
+  (V.02.3); `check_station_mapping.py` validates it against the data.
 
 `analysis/results.json` and `analysis/kcdc/kcdc_results.json` hold every aggregate number the
 manuscript reports, so each claim can be checked against them without the data. Regenerating
