@@ -46,6 +46,10 @@ for lbl, k, note in rows:
     body.append(r'%s & $%s$ & %s \\' % (lbl, f4(E[k]['sigma']), sd))
     if k == 'MLP':
         body.append(r'\midrule')
+DGx = R.get('diagnostics', {}).get('extra_estimators', {})
+for lab_, key_ in (('$k$-nearest neighbours ($k=50$)', 'kNN (k=50)'), ('XGBoost', 'XGBoost')):
+    if key_ in DGx:
+        body.insert(4, r'%s & $%s$ & --- \\' % (lab_, f4(DGx[key_])))
 bayes_row = ''
 if B:
     bayes_row = (r'\midrule' '\n' r'\emph{Bayes floor, nine features (Gamma test)} & $%s$ & $[%s,%s]$ \\'
@@ -255,6 +259,147 @@ $\log_{10}\Ne$ slice & events & corr$(s,\lgE)$ & $\sigma$, none & $\sigma$, cent
               'kcdcMixPhiM': '%.3f' % KPr['(1-0.5) GB(phi) + 0.5 u(M)']['phi_M']})
 else:
     print('  WARNING: no analysis/kcdc/kcdc_results.json; KCDC table and macros skipped')
+
+# ------------------------------------------------------------- review additions
+LD = R.get('ladder')
+if LD:
+    rows = []
+    for r in LD['rows']:
+        d_ = ('$%+.5f$ & $[%+.5f, %+.5f]$' % (r['delta'], *r['delta_ci'])) if 'delta' in r else '--- & ---'
+        rows.append(r'%s & %s & $%s$ & %s \\' % (r['rung'], r['label'].replace('+ ', r'$+$\ '), f4(r['sigma']), d_))
+    P_ = LD['permutation']
+    rows.append(r'\midrule')
+    rows.append(r"F$'$ & F with the 16 counts permuted within each event & $%s$ & $%+.5f$ & $[%+.5f, %+.5f]$ \\"
+                % (f4(P_['sigma_perm']), P_['delta_real_minus_perm'], *P_['ci']))
+    write('j_ladder.tex', r"""\begin{table}[t]
+\centering\small
+\caption{The information ladder: gradient boosting on nested feature sets, each rung adding one
+quantity, scored on the same test events. $\Delta$ is the change from the previous rung with a
+paired bootstrap interval over events (%d resamples); for F$'$ it is F minus F$'$. Only the zenith
+angle and the total muon count change $\sigma$ by more than $10^{-4}$.}
+\label{tab:ladder}
+\begin{tabular}{llccc}
+\toprule
+& Feature set & $\sigma(\lgE)$ & $\Delta\sigma$ & 95\%% interval \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % (LD['n_boot'], '\n'.join(rows)))
+    rp = LD['render_pairs']; rr = {x['rung']: x for x in LD['rows']}
+    M.update({'ladZen': '%.4f' % -rr['B']['delta'], 'ladMu': '%.4f' % -rr['D']['delta'],
+              'ladModLo': '%+.5f' % rr['F']['delta_ci'][0], 'ladModHi': '%+.5f' % rr['F']['delta_ci'][1],
+              'permLo': '%+.5f' % P_['ci'][0], 'permHi': '%+.5f' % P_['ci'][1],
+              'pairBA': '%.4f' % -rp['B_minus_A']['delta'], 'pairBALo': '%.4f' % -rp['B_minus_A']['ci'][1],
+              'pairBAHi': '%.4f' % -rp['B_minus_A']['ci'][0],
+              'pairGB': '%+.5f' % rp['G_minus_B']['delta'], 'pairGBLo': '%+.5f' % rp['G_minus_B']['ci'][0],
+              'pairGBHi': '%+.5f' % rp['G_minus_B']['ci'][1],
+              'pairCC': '%.4f' % -rp['C_minus_Cprime']['delta'], 'pairCCLo': '%.4f' % -rp['C_minus_Cprime']['ci'][1],
+              'pairCCHi': '%.4f' % -rp['C_minus_Cprime']['ci'][0]})
+
+FR = R.get('floor_robust')
+if FR:
+    gv = [v for s_ in FR['gamma'].values() for v in s_.values()]
+    rows = [r'%s & %s & $%s$ \\' % (sc, ' & '.join('$%s$' % f4(v) for v in FR['gamma'][sc].values()), f4(FR['devroye'][sc]))
+            for sc in FR['gamma']]
+    write('j_floor_robust.tex', r"""\begin{table}[h]
+\centering\small
+\caption{Robustness of the nine-feature floor estimate. Gamma test with neighbours $k=1..K$ under
+three feature scalings, and the Devroye et al.\ nearest-neighbour estimator, which is biased
+upwards (by $%s\%%$ at noise $0.10$ in its control) and serves as an upper estimate.}
+\label{tab:floorrobust}
+\begin{tabular}{lccccc}
+\toprule
+scaling & $K=5$ & $K=10$ & $K=20$ & $K=50$ & Devroye (upper) \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % ([c_['bias_pct'] for c_ in FR['controls_devroye'] if c_['true_sd'] == 0.10][0], '\n'.join(rows)))
+    M.update({'gammaMin': f4(min(gv)), 'gammaMax': f4(max(gv)),
+              'devroyeMin': f4(min(FR['devroye'].values())), 'devroyeMax': f4(max(FR['devroye'].values())),
+              'devroyeBiasTen': '%.1f' % [c_['bias_pct'] for c_ in FR['controls_devroye'] if c_['true_sd'] == 0.10][0]})
+
+RG = R.get('regimes')
+if RG:
+    rows = []
+    for n_, v in RG['rows'].items():
+        lab = n_.replace('logNe ', r'$\log_{10}N_e$ ').replace('-', '--')
+        rows.append(r'%s & $%s$ & $%s$ & %s & $%+.1f\%%$ \\' % (
+            lab, '{:,}'.format(v['n_test']).replace(',', '{,}'), f4(v['floor']),
+            ' & '.join('$%s$' % f4(v['sigma'][m]) for m in ('Ridge', 'RandomForest', 'GradBoost', 'MLP')),
+            v['best_over_floor_pct']))
+    write('j_regimes.tex', r"""\begin{table}[t]
+\centering\small
+\caption{The plateau in five sub-regimes of the sample: the two shower-size halves and three
+zenith bins of equal size (edges $%s^\circ$ and $%s^\circ$). Each estimator is trained and scored
+within the regime; the floor is that regime's own Gamma-test estimate. The last column is the
+best nonlinear estimator's excess over the floor.}
+\label{tab:regimes}
+\begin{tabular}{lrccccccc}
+\toprule
+regime & test events & floor & ridge & forest & boosting & MLP & best $-$ floor \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % (RG['zenith_edges'][0], RG['zenith_edges'][1], '\n'.join(rows)))
+    ex = [v['best_over_floor_pct'] for v in RG['rows'].values()]
+    M.update({'regExcessMin': '%.1f' % min(ex), 'regExcessMax': '%.1f' % max(ex),
+              'regSpreadMax': f4(max(v['nonlin_spread'] for v in RG['rows'].values()))})
+
+DG = R.get('diagnostics')
+if DG:
+    sp = DG['species']
+    rows = [r'%s & $%s$ & $%+.4f$ & $%s$ & $%.1f\%%$ & $%.1f\%%$ \\' % (k, '{:,}'.format(v['n']).replace(',', '{,}'),
+            v['bias'], f4(v['sigma']), v['cov68'], v['cov90']) for k, v in sp.items()]
+    write('j_species_matrix.tex', r"""\begin{table}[h]
+\centering\small
+\caption{Per-primary error matrix for gradient boosting on the nine features: mean bias,
+resolution, and the coverage of the conformalised 68\%% and 90\%% intervals.}
+\label{tab:speciesmatrix}
+\begin{tabular}{lrcccc}
+\toprule
+primary & test events & bias & $\sigma$ & 68\%% coverage & 90\%% coverage \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % '\n'.join(rows))
+    lo = DG['lopo']
+    rows = [r'%s & $%s$ & $%+.4f$ & $%s$ & $%+.4f$ \\' % (k, f4(v['sigma_in']), v['bias_in'], f4(v['sigma_held_out']),
+            v['bias_held_out']) for k, v in lo.items()]
+    write('j_lopo.tex', r"""\begin{table}[h]
+\centering\small
+\caption{Leave-one-primary-out: gradient boosting trained on all five primaries (``in'') or on the
+other four (``held out''), scored on the test events of the primary named.}
+\label{tab:lopo}
+\begin{tabular}{lcccc}
+\toprule
+primary & $\sigma$, in & bias, in & $\sigma$, held out & bias, held out \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % '\n'.join(rows))
+    LC = DG['learning_curves']; CV = DG['coverage_curve']
+    M.update({'lcGBsmall': f4(LC['GradBoost']['sigma'][0]), 'lcGBfull': f4(LC['GradBoost']['sigma'][-1]),
+              'lcGBhundredk': f4(LC['GradBoost']['sigma'][-2]),
+              'covMaxDevRaw': '%.1f' % max(abs(a_ - 100 * b_) for a_, b_ in zip(CV['raw'], CV['nominal'])),
+              'covMaxDevCqr': '%.1f' % max(abs(a_ - 100 * b_) for a_, b_ in zip(CV['cqr'], CV['nominal']))})
+    if 'XGBoost' in DG['extra_estimators']:
+        M['sigmaXGB'] = f4(DG['extra_estimators']['XGBoost'])
+    M['sigmaKNN'] = f4(DG['extra_estimators']['kNN (k=50)'])
+    lb = [abs(v['bias_held_out']) for v in lo.values()]; li = [abs(v['bias_in']) for v in lo.values()]
+    M.update({'lopoBiasMax': '%.3f' % max(lb), 'lopoBiasInMax': '%.3f' % max(li)})
+CC = R.get('cnn_curves')
+if CC:
+    M.update({'cnnBsmall': f4(CC['B'][0]), 'cnnNsmall': '{:,}'.format(CC['n'][0]).replace(',', '{,}')})
 
 # ------------------------------------------------------------- shower reuse
 SG = R.get('shower_groups')
