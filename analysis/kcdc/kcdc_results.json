@@ -1,0 +1,193 @@
+{
+  "n_file": 6077188,
+  "n_clean": 6076967,
+  "selection": {
+    "full range": {
+      "n": 400000,
+      "corr_age_logE": 0.064,
+      "age_iqr": [
+        1.016,
+        1.284
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1477,
+        "sigma_trained_within": 0.1477,
+        "bias_spread": 0.0742
+      },
+      "central half of age": {
+        "kept": 49.9,
+        "sigma_trained_all": 0.1475,
+        "sigma_trained_within": 0.1476,
+        "bias_spread": 0.0813
+      }
+    },
+    "logNe 2.4-2.8": {
+      "n": 225683,
+      "corr_age_logE": -0.027,
+      "age_iqr": [
+        0.743,
+        1.073
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1299,
+        "sigma_trained_within": 0.1299,
+        "bias_spread": 0.023
+      },
+      "central half of age": {
+        "kept": 49.8,
+        "sigma_trained_all": 0.131,
+        "sigma_trained_within": 0.1312,
+        "bias_spread": 0.0233
+      }
+    },
+    "logNe 2.8-3.2": {
+      "n": 400000,
+      "corr_age_logE": -0.016,
+      "age_iqr": [
+        0.921,
+        1.192
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1331,
+        "sigma_trained_within": 0.1331,
+        "bias_spread": 0.0385
+      },
+      "central half of age": {
+        "kept": 50.0,
+        "sigma_trained_all": 0.1336,
+        "sigma_trained_within": 0.1337,
+        "bias_spread": 0.043
+      }
+    },
+    "logNe 3.2-3.6": {
+      "n": 400000,
+      "corr_age_logE": -0.029,
+      "age_iqr": [
+        1.02,
+        1.261
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1417,
+        "sigma_trained_within": 0.1417,
+        "bias_spread": 0.065
+      },
+      "central half of age": {
+        "kept": 50.1,
+        "sigma_trained_all": 0.143,
+        "sigma_trained_within": 0.1431,
+        "bias_spread": 0.072
+      }
+    },
+    "logNe 3.6-4.0": {
+      "n": 400000,
+      "corr_age_logE": -0.052,
+      "age_iqr": [
+        1.063,
+        1.301
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1525,
+        "sigma_trained_within": 0.1525,
+        "bias_spread": 0.0959
+      },
+      "central half of age": {
+        "kept": 49.9,
+        "sigma_trained_all": 0.1537,
+        "sigma_trained_within": 0.1539,
+        "bias_spread": 0.1101
+      }
+    },
+    "logNe 4.0-4.4": {
+      "n": 400000,
+      "corr_age_logE": -0.1,
+      "age_iqr": [
+        1.065,
+        1.328
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1576,
+        "sigma_trained_within": 0.1576,
+        "bias_spread": 0.0997
+      },
+      "central half of age": {
+        "kept": 49.9,
+        "sigma_trained_all": 0.1549,
+        "sigma_trained_within": 0.155,
+        "bias_spread": 0.1096
+      }
+    },
+    "logNe 4.4-4.8": {
+      "n": 400000,
+      "corr_age_logE": -0.18,
+      "age_iqr": [
+        1.008,
+        1.35
+      ],
+      "none": {
+        "kept": 100.0,
+        "sigma_trained_all": 0.1428,
+        "sigma_trained_within": 0.1428,
+        "bias_spread": 0.0746
+      },
+      "central half of age": {
+        "kept": 50.1,
+        "sigma_trained_all": 0.1284,
+        "sigma_trained_within": 0.1284,
+        "bias_spread": 0.0687
+      }
+    }
+  },
+  "probe": {
+    "GB on phi": {
+      "phi": 0.999,
+      "phi_M": 0.999,
+      "increment": -0.0
+    },
+    "GB on phi + M": {
+      "phi": 0.5985,
+      "phi_M": 0.9982,
+      "increment": 0.3997
+    },
+    "true energy": {
+      "phi": 0.4112,
+      "phi_M": 0.681,
+      "increment": 0.2698
+    },
+    "GB on phi + N(0,0.02)": {
+      "phi": 0.9845,
+      "phi_M": 0.9844,
+      "increment": -0.0
+    },
+    "GB on phi + N(0,0.05)": {
+      "phi": 0.9155,
+      "phi_M": 0.9154,
+      "increment": -0.0001
+    },
+    "GB on phi + N(0,0.10)": {
+      "phi": 0.7314,
+      "phi_M": 0.7314,
+      "increment": -0.0001
+    },
+    "(1-0.1) GB(phi) + 0.1 u(M)": {
+      "phi": 0.9916,
+      "phi_M": 0.9987,
+      "increment": 0.0071
+    },
+    "(1-0.3) GB(phi) + 0.3 u(M)": {
+      "phi": 0.9251,
+      "phi_M": 0.9985,
+      "increment": 0.0734
+    },
+    "(1-0.5) GB(phi) + 0.5 u(M)": {
+      "phi": 0.7853,
+      "phi_M": 0.9987,
+      "increment": 0.2133
+    }
+  }
+}
