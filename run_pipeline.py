@@ -114,7 +114,8 @@ def compute():
                    ('run_regimes.py', 'run_regimes (~2 min)'),
                    ('run_diagnostics.py', 'run_diagnostics (~2 min)'),
                    ('run_cnn_curves.py', 'run_cnn_curves (~8 min, torch)'),
-                   ('run_group_checks.py', 'run_group_checks (~3 min)')):
+                   ('run_group_checks.py', 'run_group_checks (~3 min)'),
+                   ('run_mechanism.py', 'run_mechanism (~1 min)')):
         run(s, ANA, lbl)
     # KCDC arm: needs data/kcdc/kcdc_kascade_qgs4.npz (public KCDC download + convert_kcdc.py)
     if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_qgs4.npz')):
@@ -171,6 +172,12 @@ def latex():
         undef = log.lower().count('undefined')
         over = log.count('Overfull')
         print('  %-12s errors=%d undefined=%d overfull=%d' % (p, errs, undef, over))
+        if p == 'mlst':                                   # needs the .aux, so before clean-up
+            r = subprocess.run([sys.executable, os.path.join('tools', 'check_floats.py'), p], cwd=ROOT,
+                               capture_output=True, text=True)
+            print('  ' + r.stdout.strip().splitlines()[-1])
+            if r.returncode:
+                sys.exit(r.stdout)
         for ext in ('.aux', '.log', '.out'):
             try:
                 os.remove(os.path.join(ROOT, p + ext))

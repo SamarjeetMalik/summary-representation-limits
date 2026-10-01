@@ -478,6 +478,7 @@ Estimator or reference & $\sigma(\lgE)$ \\
                   'cnnImgVsNineHi': '%.4f' % -cio['vs_nine_single'][0]['ci'][0],
                   'cnnResVsEng': '%.4f' % -cr['vs_engineered']['delta'],
                   'cnnResVsEngLo': '%.4f' % -cr['vs_engineered']['ci'][1], 'cnnResVsEngHi': '%.4f' % -cr['vs_engineered']['ci'][0],
+                  'cnnImgGapPct': '%.1f' % (100 * (KF['oracle']['sigma_nine'] - sum(cio['sigma_seeds']) / 3) / gapv),
                   'cnnResGapPct': '%.1f' % (100 * (KF['oracle']['sigma_nine'] - sum(cr['sigma_seeds']) / 3) / gapv),
                   'cnnSeedSpread': '%.4f' % max(max(c['sigma_seeds']) - min(c['sigma_seeds']) for c in CN['cnn'].values())})
     rows.append(r'\midrule')
@@ -516,6 +517,13 @@ Representation & $\sigma(\lgE)$ & $\Delta\sigma$ [95\%% interval] & gap closed \
 SMC = os.path.join(HERE, 'kcdc', 'station_mapping_check.json')
 if os.path.exists(SMC):
     sm = json.load(open(SMC)); M['stationCorr'] = '%.2f' % min(sm['corr_x'], sm['corr_y'])
+
+MW = R.get('mechanism_width')
+if MW:
+    mw = {r['width']: r for r in MW}
+    M.update({'mechTenth': '%.3f' % mw[0.10]['corr_mean'], 'mechTenthLo': '%.3f' % mw[0.10]['corr_min'],
+              'mechTenthHi': '%.3f' % mw[0.10]['corr_max'], 'mechFifth': '%.3f' % mw[0.20]['corr_mean'],
+              'mechNarrowest': '%.3f' % mw[min(mw)]['corr_mean']})
 
 # ------------------------------------------------------------- shower reuse
 SG = R.get('shower_groups')

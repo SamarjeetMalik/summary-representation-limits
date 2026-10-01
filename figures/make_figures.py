@@ -116,21 +116,27 @@ def fig2():
 
 # ---------------------------------------------------------------- Figure 3
 def fig3():
-    fig, ax = plt.subplots(figsize=(4.3, 2.7))
-    rows = RES['mechanism']
-    labels = [r['window'] for r in rows] + ['whole\nsample']
-    vals = [r['corr'] for r in rows] + [RES['corr_whole']]
-    cols = [BLUE] * len(rows) + [GREY]
-    bars = ax.bar(range(len(vals)), vals, color=cols, width=.62, zorder=2)
-    for i, (b, v) in enumerate(zip(bars, vals)):
-        ax.text(b.get_x() + b.get_width() / 2, v + .014, '%+.3f' % v,
-                ha='center', va='bottom', fontsize=8)
-    ax.axhline(RES['corr_whole'], color=GREY, ls=':', lw=.9, zorder=1)
-    ax.set_xticks(range(len(vals)))
-    ax.set_xticklabels(labels, fontsize=8)
-    ax.set_ylabel(r'corr$(s,\ \log_{10} E)$')
-    ax.set_xlabel(r'$\log_{10} N_{\mathrm{e}}$ window')
-    ax.set_ylim(0, max(vals) * 1.18)
+    """Age against energy over the whole slice and inside one 0.1-wide size window, and the
+    age-energy correlation against window width (run_mechanism.py)."""
+    d = C.load_root(); y = d['y']; lne, s = d['log_Ne'], d['Age']
+    W = RES['mechanism_width']; mech = RES['mechanism']
+    fig, axs = plt.subplots(1, 3, figsize=(7.0, 2.4), gridspec_kw={'width_ratios': [1, 1, 1.05]})
+    win = mech[-1]; a_, b_ = [float(v) for v in win['window'].split('-')]
+    for ax, m, title in ((axs[0], np.ones(len(y), bool), r'whole slice, $\log_{10}N_e\in[4.8,5.2]$'),
+                         (axs[1], (lne >= a_) & (lne < b_), r'$\log_{10}N_e\in[%.2f,%.2f)$' % (a_, b_))):
+        ax.hexbin(y[m], s[m], gridsize=45, cmap='Blues', bins='log', mincnt=1, linewidths=0)
+        r_ = np.corrcoef(s[m], y[m])[0, 1]
+        ax.set_title(title, fontsize=7.5); ax.text(.04, .93, 'corr = %.3f' % r_, transform=ax.transAxes, fontsize=7.5, va='top')
+        ax.set_xlabel(r'true $\log_{10}(E/\mathrm{GeV})$'); ax.set_ylim(0.6, 1.5)
+    axs[0].set_ylabel('shower age $s$')
+    ax = axs[2]
+    w = [r['width'] for r in W]; cm = [r['corr_mean'] for r in W]
+    lo = [r['corr_min'] for r in W]; hi = [r['corr_max'] for r in W]
+    ax.fill_between(w, lo, hi, color=BLUE, alpha=.15, lw=0, label='range over window positions')
+    ax.plot(w, cm, 'o-', color=BLUE, ms=4, lw=1.3, label='mean over positions')
+    ax.set_xscale('log'); ax.set_xlabel(r'window width in $\log_{10}N_e$'); ax.set_ylabel(r'corr$(s,\ \log_{10}E)$')
+    ax.set_title('correlation vs window width', fontsize=7.5); ax.legend(fontsize=6.3, loc='upper center', bbox_to_anchor=(.5, -.32), ncol=1)
+    fig.tight_layout()
     fig.savefig(os.path.join(HERE, 'fig3_mechanism.pdf'))
     plt.close(fig)
     print('  fig3_mechanism.pdf')
