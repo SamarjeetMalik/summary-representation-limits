@@ -113,7 +113,8 @@ def compute():
                    ('run_floor_robust.py', 'run_floor_robust (~2 min)'),
                    ('run_regimes.py', 'run_regimes (~2 min)'),
                    ('run_diagnostics.py', 'run_diagnostics (~2 min)'),
-                   ('run_cnn_curves.py', 'run_cnn_curves (~8 min, torch)')):
+                   ('run_cnn_curves.py', 'run_cnn_curves (~8 min, torch)'),
+                   ('run_group_checks.py', 'run_group_checks (~3 min)')):
         run(s, ANA, lbl)
     # KCDC arm: needs data/kcdc/kcdc_kascade_qgs4.npz (public KCDC download + convert_kcdc.py)
     if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_qgs4.npz')):

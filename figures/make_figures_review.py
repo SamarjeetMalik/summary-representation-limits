@@ -110,17 +110,22 @@ def fig_probe_map():
 
 
 def fig_regimes():
-    G = R['regimes']['rows']; names = list(G)
+    G = R['regimes']['rows']; names = list(G); EX = R.get('group_checks', {}).get('regime_excess')
     fig, ax = plt.subplots(figsize=(5.2, 2.6))
-    models = [('Ridge', SKY, 'o'), ('RandomForest', GREEN, 's'), ('GradBoost', BLUE, '^'), ('MLP', PURPLE, 'D')]
+    models = [('Ridge', SKY, 'o'), ('RandomForest', GREEN, 's'), ('MLP', PURPLE, 'D')]
     for j, (m, col, mk) in enumerate(models):
         ratio = [100 * (G[n]['sigma'][m] / G[n]['floor'] - 1) for n in names]
-        ax.plot(np.arange(len(names)) + (j - 1.5) * .09, ratio, mk, color=col, ms=4.5,
-                label={'RandomForest': 'random forest', 'GradBoost': 'grad. boosting'}.get(m, m))
+        ax.plot(np.arange(len(names)) + (j - 1) * .1 + .18, ratio, mk, color=col, ms=4, alpha=.8,
+                label={'RandomForest': 'random forest'}.get(m, m))
+    if EX:
+        v = [EX[n]['excess_pct'] for n in names]
+        lo = [EX[n]['excess_pct'] - EX[n]['ci'][0] for n in names]; hi = [EX[n]['ci'][1] - EX[n]['excess_pct'] for n in names]
+        ax.errorbar(np.arange(len(names)) - .12, v, yerr=[lo, hi], fmt='^', color=BLUE, ms=5.5, capsize=2.5,
+                    lw=1.2, label='grad. boosting (95% CI)')
     ax.axhline(0, color=GREY, lw=.8, ls='--')
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels([n.replace('logNe ', r'$\log_{10}N_e$ ').replace('zenith ', 'zenith\n') for n in names], fontsize=7.5)
-    ax.set_ylabel('$\\sigma$ above regime floor (%)')
+    ax.set_ylabel('$\\sigma$ above regime floor estimate (%)')
     ax.legend(ncol=4, loc='upper center', bbox_to_anchor=(.5, 1.18), fontsize=7)
     save(fig, 'fig8_regimes.pdf')
 

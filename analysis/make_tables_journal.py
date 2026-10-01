@@ -52,14 +52,14 @@ for lab_, key_ in (('$k$-nearest neighbours ($k=50$)', 'kNN (k=50)'), ('XGBoost'
         body.insert(4, r'%s & $%s$ & --- \\' % (lab_, f4(DGx[key_])))
 bayes_row = ''
 if B:
-    bayes_row = (r'\midrule' '\n' r'\emph{Bayes floor, nine features (Gamma test)} & $%s$ & $[%s,%s]$ \\'
+    bayes_row = (r'\midrule' '\n' r'\emph{Estimated floor $\hat\sigma_{\mathrm{B}}$, nine features (Gamma test)} & $%s$ & $[%s,%s]$ \\'
                  % (f4(B['nine']['rms_floor']), f4(B['nine']['ci'][0]), f4(B['nine']['ci'][1])))
 write('j_floor.tex', r"""\begin{table}[t]
 \centering
 \caption{Every estimator on the same %s events. $\sigma$ is the standard deviation of
 $\hat y-y$ with $y=\lgE$. The third column is the seed-to-seed standard deviation over five
 seeds (ridge has no seed; archived rows are fixed predictions). The last row is the
-model-free estimate of the Bayes floor of the nine-feature representation
+model-free estimate of the Bayes-risk floor of the nine-feature representation
 (section~\ref{sec:bayes}) with its $95\%%$ bootstrap interval.}
 \label{tab:floor}
 \begin{tabular}{lcc}
@@ -89,7 +89,7 @@ sr = [('E', 'ridge on the 400 pixels', 'linear', SW['E_ridge_pixels']),
       ('F', 'MLP on the 400 pixels', 'fully connected', SW['F_mlp_pixels']),
       ('B', 'CNN on the image', 'convolutional', RD['B_rendered']),
       ('G', r'ViT on $4{\times}5$ patches', 'attention', SW['G_vit_patches'])]
-floor4 = (r'\midrule' '\n' r'& \emph{Bayes floor, four scalars (Gamma test)} & --- & $%s$ \\'
+floor4 = (r'\midrule' '\n' r'& \emph{Estimated floor $\hat\sigma_{\mathrm{B}}$, four scalars (Gamma test)} & --- & $%s$ \\'
           % f4(B['four']['rms_floor'])) if B else ''
 write('j_render.tex', r"""\begin{table}[t]
 \centering
@@ -400,6 +400,33 @@ primary & $\sigma$, in & bias, in & $\sigma$, held out & bias, held out \\
 CC = R.get('cnn_curves')
 if CC:
     M.update({'cnnBsmall': f4(CC['B'][0]), 'cnnNsmall': '{:,}'.format(CC['n'][0]).replace(',', '{,}')})
+
+GCK = R.get('group_checks')
+if GCK:
+    ex = GCK['regime_excess']
+    M.update({'regCiLo': '%.1f' % min(v['ci'][0] for v in ex.values()),
+              'regCiHi': '%.1f' % max(v['ci'][1] for v in ex.values()),
+              'regCiZero': str(sum(1 for v in ex.values() if v['ci'][0] <= 0))})
+    gc = GCK['coverage_by_species']
+    rows = [r'%s & %s \\' % (k, ' & '.join(r'$%.1f$' % x for x in v)) for k, v in gc['species'].items()]
+    write('j_group_coverage.tex', r"""\begin{table}[h]
+\centering\small
+\caption{Coverage (\%%) of the conformalised intervals by primary, at each nominal level. The
+conformal guarantee is marginal; subgroups depart from nominal by up to %s percentage points.}
+\label{tab:groupcov}
+\begin{tabular}{l%s}
+\toprule
+primary & %s \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table}
+""" % (gc['max_abs_dev'], 'c' * len(gc['nominal']),
+       ' & '.join(r'$%d\%%$' % round(100 * n) for n in gc['nominal']), '\n'.join(rows)))
+    M.update({'groupCovMaxDev': '%.1f' % gc['max_abs_dev'],
+              'covProtonNinety': '%.1f' % gc['species']['proton'][gc['nominal'].index(0.90)],
+              'covIronNinety': '%.1f' % gc['species']['iron'][gc['nominal'].index(0.90)]})
 
 # ------------------------------------------------------------- shower reuse
 SG = R.get('shower_groups')
