@@ -256,6 +256,24 @@ $\log_{10}\Ne$ slice & events & corr$(s,\lgE)$ & $\sigma$, none & $\sigma$, cent
 else:
     print('  WARNING: no analysis/kcdc/kcdc_results.json; KCDC table and macros skipped')
 
+# ------------------------------------------------------------- shower reuse
+SG = R.get('shower_groups')
+if SG:
+    M.update({'nShowers': '{:,}'.format(SG['n_showers']).replace(',', '{,}'),
+              'meanReuse': '%.1f' % SG['mean_reuse'],
+              'testShowers': '{:,}'.format(SG['test_showers']).replace(',', '{,}'),
+              'testShowersInTrain': '{:,}'.format(SG['test_showers_in_train']).replace(',', '{,}'),
+              'reuseWithinPhi': '%.0f' % SG['within_sd']['phi'], 'reuseSamplePhi': '%.0f' % SG['sample_sd']['phi'],
+              'reuseWithinXc': '%.0f' % SG['within_sd']['Xc'], 'reuseSampleXc': '%.0f' % SG['sample_sd']['Xc'],
+              'gbLeakySame': f4(SG['gb_sigma']['leaky_same_size']), 'gbDisjoint': f4(SG['gb_sigma']['shower_disjoint']),
+              'nTrainDisjoint': '{:,}'.format(SG['n_train_disjoint']).replace(',', '{,}'),
+              'bayesNineOther': f4(SG['bayes_nine_other_showers']),
+              'nnSameShowerPct': '%.0f' % (100 * SG['nn1_same_shower_frac']),
+              'bayesGapDisjointPct': '%.1f' % (100 * (SG['gb_sigma']['shower_disjoint'] - SG['bayes_nine_other_showers'])
+                                               / SG['bayes_nine_other_showers'])})
+else:
+    print('  WARNING: no shower_groups block')
+
 # ------------------------------------------------------------- macros
 NB = R['nkg_baseline']
 M.update({

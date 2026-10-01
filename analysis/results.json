@@ -1127,5 +1127,33 @@
         }
       }
     }
+  },
+  "shower_groups": {
+    "n_events": 171776,
+    "n_showers": 47394,
+    "mean_reuse": 3.62,
+    "within_sd": {
+      "theta": 1.0532,
+      "phi": 4.3165,
+      "Xc": 13.5458,
+      "logNe": 0.0147,
+      "age": 0.0281
+    },
+    "sample_sd": {
+      "theta": 5.9109,
+      "phi": 105.4781,
+      "Xc": 18.2772,
+      "logNe": 0.1145,
+      "age": 0.1193
+    },
+    "test_showers": 23769,
+    "test_showers_in_train": 21247,
+    "n_train_disjoint": 63475,
+    "gb_sigma": {
+      "leaky_same_size": 0.1022,
+      "shower_disjoint": 0.1029
+    },
+    "nn1_same_shower_frac": 0.009,
+    "bayes_nine_other_showers": 0.1009
   }
 }

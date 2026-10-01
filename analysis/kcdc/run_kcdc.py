@@ -16,7 +16,7 @@ import numpy as np
 from joblib import Parallel, delayed, parallel_config
 from sklearn.ensemble import HistGradientBoostingRegressor as GBR
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import KFold
+from sklearn.model_selection import GroupKFold
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 NPZ = os.environ.get('KCDC_NPZ', os.path.join(os.path.dirname(os.path.dirname(HERE)),
@@ -60,6 +60,12 @@ R['n_file'] = int(len(ok)); R['n_clean'] = int(ok.sum())
 log('file %d events, %d after cleaning cuts' % (len(ok), ok.sum()))
 
 y_all = D['TrEP'] - 9.0                                   # log10(E/GeV)
+# One CORSIKA shower is thrown at 3 core positions in the KCDC KASCADE set (KCDC simulation
+# manual, sec. 2.5). Copies share true energy and primary, so every split below is by shower.
+_, SHOWER = np.unique(np.column_stack([D['TrEP'], D['TrPP'].astype(np.float32)]), axis=0,
+                      return_inverse=True)
+SHOWER = SHOWER.ravel()
+R['n_showers'] = int(SHOWER.max() + 1)
 
 
 def nine(Ne, Nmu, idx):
@@ -87,7 +93,10 @@ def run_slice(label, ids, seed=0):
         ids = ids[:400000]
     X = nine(D['Ne'][ids], D['Nmu'][ids], ids); y = y_all[ids]; age = D['Age'][ids]
     pid = D['TrPP'][ids]
-    ntr_ = int(.75 * len(ids)); a, b = np.arange(ntr_), np.arange(ntr_, len(ids))
+    # shower-disjoint 75/25 split: whole showers go to one side
+    sh = SHOWER[ids]; ush = r_.permutation(np.unique(sh))
+    in_tr = np.isin(sh, ush[:int(.75 * len(ush))])
+    a, b = np.where(in_tr)[0], np.where(~in_tr)[0]
     q25, q75 = np.percentile(age[a], [25, 75])
     cuts = {'none': np.ones(len(ids), bool), 'central half of age': (age >= q25) & (age <= q75)}
     out = {'n': int(len(ids)), 'corr_age_logE': round(float(np.corrcoef(age, y)[0, 1]), 3),
@@ -118,13 +127,16 @@ log('C. degeneracy probe calibration on KCDC')
 ids = np.random.default_rng(1).permutation(full)[:300000]
 PHI = np.column_stack([D['Ne'][ids], D['Age'][ids], D['Xc'][ids], D['Yc'][ids]])
 M = np.column_stack([D['Nmu'][ids], ze[ids]])
-y = y_all[ids]; ntr_ = 200000
-a, b = np.arange(ntr_), np.arange(ntr_, len(ids))
+y = y_all[ids]; sh = SHOWER[ids]
+ush = np.random.default_rng(2).permutation(np.unique(sh))
+in_tr = np.isin(sh, ush[:int(2 / 3 * len(ush))])
+a, b = np.where(in_tr)[0], np.where(~in_tr)[0]          # shower-disjoint train / probe sets
+GB_ = sh[b]
 
 
 def probe(m, F, seed=0):
     oof = np.empty_like(m)
-    for i, j in KFold(5, shuffle=True, random_state=seed).split(F):
+    for i, j in GroupKFold(5).split(F, groups=GB_):            # folds by shower
         oof[j] = GBR(max_iter=400, random_state=seed).fit(F[i], m[i]).predict(F[j])
     return r2(oof, m)
 

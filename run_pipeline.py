@@ -107,7 +107,8 @@ def compute():
                    ('run_rendering_controls.py', 'run_rendering_controls (~2 min)'),
                    ('run_sweep.py', 'run_sweep (~35 min, torch)'),
                    ('run_probe_calibration.py', 'run_probe_calibration (~5 min; needs rendering preds)'),
-                   ('run_selection_robustness.py', 'run_selection_robustness (~5 min)')):
+                   ('run_selection_robustness.py', 'run_selection_robustness (~5 min)'),
+                   ('run_shower_groups.py', 'run_shower_groups (~3 min)')):
         run(s, ANA, lbl)
     # KCDC arm: needs data/kcdc/kcdc_kascade_qgs4.npz (public KCDC download + convert_kcdc.py)
     if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_qgs4.npz')):
