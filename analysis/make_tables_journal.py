@@ -436,13 +436,13 @@ if os.path.exists(KF_P):
                                 'kNN (k=50)': r'$k$-nearest neighbours'}.get(k, k), f4(v)) for k, v in pl.items()]
     rows += [r'\midrule', r'\emph{Estimated floor $\hat\sigma_{\mathrm{B}}$, nine features (Gamma test)} & $%s$ \\'
              % f4(KF['floor']['nine']),
-             r'\emph{Gradient boosting, MC-true $N_{\mathrm{e}}$, $N_\mu$ (oracle)} & $%s$ \\' % f4(KF['oracle']['sigma_true_sizes'])]
+             r'\emph{Gradient boosting, MC-truth oracle (true $N_{\mathrm{e}}$, $N_\mu$)} & $%s$ \\' % f4(KF['oracle']['sigma_true_sizes'])]
     write('j_kcdc_floor.tex', r"""\begin{table}[t]
 \centering\small
 \caption{The plateau on KASCADE (KCDC, QGSJET-II-04, $\lgE\in[5,6]$; %s events from %s showers,
 split by shower). Estimators on the nine reconstructed features, the Gamma-test floor estimate of
-the same features (neighbours restricted to other showers), and the Monte Carlo oracle in which
-the reconstructed electron and muon sizes are replaced by their true values.}
+the same features (neighbours restricted to other showers), and the MC-truth oracle in which the
+reconstructed electron and muon sizes are replaced by their true values.}
 \label{tab:kcdcfloor}
 \begin{tabular}{lc}
 \toprule
@@ -459,13 +459,36 @@ Estimator or reference & $\sigma(\lgE)$ \\
     for k, v in it.items():
         rows.append(r'$+$ %s & $%s$ & $%+.4f$ $[%+.4f, %+.4f]$ & $%.1f\%%$ \\' % (k, f4(v['sigma']), v['delta'], *v['ci'],
                                                                               v['gap_recovered_pct']))
+    CP = os.path.join(HERE, 'kcdc', 'kcdc_cnn_results.json')
+    if os.path.exists(CP):
+        CN = json.load(open(CP)); gapv = KF['oracle']['gap']
+        assert CN['n_test'] == KF['n_test'], 'CNN and audit use different splits'
+        rows.append(r'\midrule')
+        for key, lab in (('image only', 'CNN on the measured image alone'),
+                         ('residual on GB(nine)', r'nine features $+$ CNN on the measured image')):
+            c_ = CN['cnn'][key]; sg_ = sum(c_['sigma_seeds']) / len(c_['sigma_seeds'])
+            vn = c_['vs_nine_single'][0]
+            rows.append(r'%s & $%s$ & $%+.4f$ $[%+.4f, %+.4f]$ & $%.1f\%%$ \\' % (lab, f4(sg_), vn['delta'], *vn['ci'],
+                        100 * (KF['oracle']['sigma_nine'] - sg_) / gapv))
+        cio = CN['cnn']['image only']; cr = CN['cnn']['residual on GB(nine)']
+        M.update({'cnnImg': f4(sum(cio['sigma_seeds']) / 3), 'cnnRes': f4(sum(cr['sigma_seeds']) / 3),
+                  'cnnResEns': f4(cr['sigma_ensemble']),
+                  'cnnImgVsNine': '%.4f' % -cio['vs_nine_single'][0]['delta'],
+                  'cnnImgVsNineLo': '%.4f' % -cio['vs_nine_single'][0]['ci'][1],
+                  'cnnImgVsNineHi': '%.4f' % -cio['vs_nine_single'][0]['ci'][0],
+                  'cnnResVsEng': '%.4f' % -cr['vs_engineered']['delta'],
+                  'cnnResVsEngLo': '%.4f' % -cr['vs_engineered']['ci'][1], 'cnnResVsEngHi': '%.4f' % -cr['vs_engineered']['ci'][0],
+                  'cnnResGapPct': '%.1f' % (100 * (KF['oracle']['sigma_nine'] - sum(cr['sigma_seeds']) / 3) / gapv),
+                  'cnnSeedSpread': '%.4f' % max(max(c['sigma_seeds']) - min(c['sigma_seeds']) for c in CN['cnn'].values())})
     rows.append(r'\midrule')
-    rows.append(r'MC-true $N_{\mathrm{e}}$, $N_\mu$ (oracle) & $%s$ & --- & $100\%%$ \\' % f4(KF['oracle']['sigma_true_sizes']))
+    rows.append(r'MC-truth oracle (true $N_{\mathrm{e}}$, $N_\mu$) & $%s$ & --- & $100\%%$ \\' % f4(KF['oracle']['sigma_true_sizes']))
     write('j_kcdc_intermediate.tex', r"""\begin{table}[t]
 \centering\small
 \caption{Intermediate representations on KASCADE, built from the per-station signals at the true
-detector positions and added to the nine features (gradient boosting, shower-disjoint split). The
-last column is the fraction of the gap between the nine features and the Monte Carlo oracle that
+detector positions and added to the nine features (gradient boosting, shower-disjoint split), and
+a CNN that learns from the measured detector image directly (mean of three seeds; for the
+combined model, a correction to gradient boosting that starts at the nine-feature result). The
+last column is the fraction of the gap between the nine features and the MC-truth oracle that
 each representation closes; intervals are paired bootstrap over test events.}
 \label{tab:kcdcinter}
 \begin{tabular}{lccc}

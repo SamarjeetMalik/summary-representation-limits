@@ -12,7 +12,9 @@ intermediate representations between "four fitted parameters" and "all 252 stati
   timing:                 spread of arrival times over stations with signal
 
 The file is ordered by primary, so events are read in evenly spread chunks. Output:
-data/kcdc/kcdc_station_features.npz (with the summary, the MC truth and Run/Ev).
+data/kcdc/kcdc_station_features.npz (with the summary, the MC truth and Run/Ev), and
+data/kcdc/kcdc_station_dense.npz: the full per-station signals (e/gamma deposit, muon deposit,
+arrival time) as dense (event, station 1..252) float16 arrays, for the learned-encoder test.
 Run:  python analysis/kcdc/extract_stations.py
 """
 import csv, glob, os
@@ -23,6 +25,7 @@ import uproot
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOTDIR = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
 OUT = os.path.join(ROOTDIR, 'kcdc_station_features.npz')
+OUT_DENSE = os.path.join(ROOTDIR, 'kcdc_station_dense.npz')
 NCHUNK, CH = int(os.environ.get('NCHUNK', '24')), int(os.environ.get('CHUNK', '20000'))
 E_EDGES = [0, 20, 40, 60, 80, 110, 1e9]
 M_EDGES = [0, 40, 70, 100, 1e9]
@@ -65,9 +68,18 @@ for k, o in enumerate(offs):
     feats['t_spread'] = np.sqrt(np.maximum(s2 / np.maximum(c_, 1) - (s1 / np.maximum(c_, 1)) ** 2, 0))
     rec = dict(a); rec.update(t); rec.update(feats)
     rec['Run'] = ak.to_numpy(g['Run']); rec['Ev'] = ak.to_numpy(g['Ev'])
+    for name, dkey, skey in (('dense_e', 'EDeposit', 'EDepositS'), ('dense_mu', 'MDeposit', 'MDepositS'),
+                             ('dense_t', 'Arrival', 'ArrivalS')):
+        cnt = ak.to_numpy(ak.num(g[skey])); ev = np.repeat(np.arange(n), cnt)
+        v = ak.to_numpy(ak.flatten(g[dkey])).astype(np.float32); sid = ak.to_numpy(ak.flatten(g[skey])).astype(int)
+        dense = np.zeros((n, 252), np.float32); dense[ev, sid - 1] = v
+        rec[name] = dense.astype(np.float16)
     parts.append(rec)
     print('  chunk %2d/%d at %d: %d events' % (k + 1, NCHUNK, o, n), flush=True)
 
 D = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
+dense = {k: D.pop(k) for k in ('dense_e', 'dense_mu', 'dense_t')}
 np.savez_compressed(OUT, **D, e_edges=np.array(E_EDGES), mu_edges=np.array(M_EDGES))
+np.savez_compressed(OUT_DENSE, **dense, Run=D['Run'], Ev=D['Ev'], TrEP=D['TrEP'])
+print('wrote %s (%.0f MB)' % (OUT_DENSE, os.path.getsize(OUT_DENSE) / 1e6))
 print('wrote %s: %d events, %.0f MB' % (OUT, len(D['Ne']), os.path.getsize(OUT) / 1e6))

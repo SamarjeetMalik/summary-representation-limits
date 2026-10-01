@@ -63,7 +63,7 @@ def fig_ladder():
             sigd = r['delta_ci'][0] > 0 or r['delta_ci'][1] < 0
             txt = ('%+.4f' % r['delta']) if abs(r['delta']) >= 1e-3 else ('%+.5f' % r['delta'])
             ax.text(i, r['sigma'] + 0.0012, txt + ('' if sigd else '\n(n.s.)'),
-                    ha='center', va='bottom', fontsize=6.6, color=BLUE if sigd else GREY, linespacing=1.0)
+                    ha='center', va='bottom', fontsize=7.4, color=BLUE if sigd else GREY, linespacing=1.0)
     P = R['ladder']['permutation']
     ax.plot(len(L) - 1 + .25, P['sigma_perm'], 'x', color=VERM, ms=6, mew=1.3, zorder=4)
     ax.annotate('modules permuted\nwithin each event', xy=(len(L) - 1 + .25, P['sigma_perm']),
@@ -74,7 +74,7 @@ def fig_ladder():
     floor_band(ax, B['nine']['rms_floor'], *B['nine']['ci'], 'floor, nine features', col=GREEN, xr=-.3, ha='left')
     short = ['four fit\nparameters', '+ zenith\nangle', '+ core\ndistance', '+ total\nmuons',
              '+ muon ratio\n(nine features)', '+ 16 module\ncounts']
-    ax.set_xticks(x); ax.set_xticklabels(short[:len(L)], fontsize=7)
+    ax.set_xticks(x); ax.set_xticklabels(short[:len(L)], fontsize=8)
     ax.set_ylabel(SIG + ', gradient boosting')
     save(fig, 'fig6_ladder.pdf')
 
@@ -103,8 +103,6 @@ def fig_probe_map():
     ax.set_xlabel(r'$R^2_{\mathrm{deg}}(\phi)$, fitted parameters only')
     ax.set_ylabel(r'$R^2_{\mathrm{deg}}(\phi, M)$, + muons and zenith')
     ax.set_xlim(0.55, 1.005); ax.set_ylim(0.55, 1.005)
-    ax.text(0.57, 0.985, 'information outside $\\phi$:\nleft of the diagonal, at the top', fontsize=6.8, color=GREEN, va='top')
-    ax.text(0.78, 0.68, 'noise only:\non the diagonal', fontsize=6.8, color=ORANGE)
     ax.legend(loc='center left', fontsize=6.6, handletextpad=.3, bbox_to_anchor=(1.02, 0.5))
     save(fig, 'fig7_probe_map.pdf')
 
@@ -122,7 +120,10 @@ def fig_regimes():
         lo = [EX[n]['excess_pct'] - EX[n]['ci'][0] for n in names]; hi = [EX[n]['ci'][1] - EX[n]['excess_pct'] for n in names]
         ax.errorbar(np.arange(len(names)) - .12, v, yerr=[lo, hi], fmt='^', color=BLUE, ms=5.5, capsize=2.5,
                     lw=1.2, label='grad. boosting (95% CI)')
-    ax.axhline(0, color=GREY, lw=.8, ls='--')
+        for i_, vv in enumerate(v):
+            ax.text(i_ - .12, EX[names[i_]]['ci'][0] - 0.25, '%+.1f%%' % vv, ha='center', va='top', fontsize=7, color=BLUE)
+        ax.set_ylim(min(EX[n]['ci'][0] for n in names) - 1.0, None)
+    ax.axhline(0, color='k', lw=1.1)
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels([n.replace('logNe ', r'$\log_{10}N_e$ ').replace('zenith ', 'zenith\n') for n in names], fontsize=7.5)
     ax.set_ylabel('$\\sigma$ above regime floor estimate (%)')
@@ -132,24 +133,25 @@ def fig_regimes():
 
 def fig_learning():
     D = R['diagnostics']['learning_curves']; Cc = R.get('cnn_curves'); B = R['bayes']
-    fig, ax = plt.subplots(figsize=(4.8, 2.9))
-    for m, col, mk, lab in (('GradBoost', BLUE, '^', 'grad. boosting, nine features'),
-                            ('MLP', PURPLE, 'D', 'MLP, nine features')):
-        ax.errorbar(D[m]['n'], D[m]['sigma'], yerr=D[m]['sd'], color=col, marker=mk, ms=4, lw=1.2,
-                    capsize=1.5, label=lab)
-    if Cc:
-        ax.plot(Cc['n'], Cc['B'], 'o-', color=ORANGE, ms=4, lw=1.2, label='CNN, rendered (B)')
-        ax.plot(Cc['n'], Cc['C'], 's-', color=VERM, ms=4, lw=1.2, label='CNN, rendered + muons (C)')
-    ax.set_xscale('log'); ax.set_xlim(800, 1.8e5); ax.set_ylim(0.098, 0.134)
-    floor_band(ax, B['four']['rms_floor'], *B['four']['ci'], 'floor, four parameters', xr=850, ha='left')
-    floor_band(ax, B['nine']['rms_floor'], *B['nine']['ci'], 'floor, nine features', col=GREEN, xr=850, ha='left')
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.6, 2.7), sharex=True)
+    for m, col, mk, lab in (('GradBoost', BLUE, '^', 'gradient boosting'), ('MLP', PURPLE, 'D', 'MLP')):
+        a1.errorbar(D[m]['n'], D[m]['sigma'], yerr=D[m]['sd'], color=col, marker=mk, ms=4, lw=1.2, capsize=1.5, label=lab)
+    floor_band(a1, B['nine']['rms_floor'], *B['nine']['ci'], 'floor estimate, nine features', col=GREEN, xr=900, ha='left')
+    a1.set_ylim(0.098, 0.124); a1.set_xscale('log')
     mlp0 = D['MLP']['sigma'][0]
-    if mlp0 > 0.134:
-        ax.annotate('MLP at %d events: %.3f' % (D['MLP']['n'][0], mlp0), xy=(D['MLP']['n'][0], 0.1335),
-                    xytext=(1.6e3, 0.1325), fontsize=6.4, color=PURPLE,
-                    arrowprops=dict(arrowstyle='->', color=PURPLE, lw=.6))
-    ax.set_xlabel('training events'); ax.set_ylabel('test ' + SIG)
-    ax.legend(fontsize=6.8, loc='upper right')
+    if mlp0 > 0.124:
+        a1.text(1.3e3, 0.1228, '(MLP at %d events: %.3f, off scale)' % (D['MLP']['n'][0], mlp0), fontsize=6.2,
+                color=PURPLE, va='top')
+    a1.set_title('summary representation (nine features)', fontsize=8); a1.set_xlabel('training events')
+    a1.set_ylabel('test ' + SIG); a1.legend(fontsize=7, loc='center right')
+    if Cc:
+        a2.plot(Cc['n'], Cc['B'], 'o-', color=ORANGE, ms=4, lw=1.2, label='CNN, rendered image (B)')
+        a2.plot(Cc['n'], Cc['C'], 's-', color=VERM, ms=4, lw=1.2, label='CNN, rendered + muons (C)')
+    floor_band(a2, B['four']['rms_floor'], *B['four']['ci'], 'floor estimate, four parameters', xr=900, ha='left')
+    a2.set_xscale('log'); a2.set_xlim(800, 1.8e5); a2.set_ylim(0.100, 0.128)
+    a2.set_title('rendered representation', fontsize=8); a2.set_xlabel('training events')
+    a2.legend(fontsize=7, loc='lower right')
+    fig.tight_layout()
     save(fig, 'fig9_learning.pdf')
 
 
@@ -175,18 +177,17 @@ def fig_energy():
 
 def fig_coverage():
     Cv = R['diagnostics']['coverage_curve']
-    fig, ax = plt.subplots(figsize=(3.2, 3.0))
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(3.6, 4.0), sharex=True, gridspec_kw={'height_ratios': [2.2, 1]})
     nom = [100 * v for v in Cv['nominal']]
-    ax.plot([45, 100], [45, 100], color=GREY, lw=.8, ls='--', label='ideal')
-    ax.plot(nom, Cv['raw'], 'o-', color=ORANGE, ms=4, lw=1.2, label='quantile regression')
-    ax.plot(nom, Cv['cqr'], 's-', color=BLUE, ms=4, lw=1.2, label='conformalised (CQR)')
-    ax.set_xlabel('nominal coverage (%)'); ax.set_ylabel('empirical coverage (%)')
-    ax.set_xlim(45, 98); ax.set_ylim(45, 98); ax.legend(loc='upper left', fontsize=7)
-    ins = ax.inset_axes([.58, .1, .38, .32])
-    ins.plot(nom, np.array(Cv['raw']) - nom, 'o-', color=ORANGE, ms=2.5, lw=1)
-    ins.plot(nom, np.array(Cv['cqr']) - nom, 's-', color=BLUE, ms=2.5, lw=1)
-    ins.axhline(0, color=GREY, lw=.6, ls='--'); ins.set_title('empirical $-$ nominal', fontsize=6.5)
-    ins.tick_params(labelsize=6)
+    a1.plot([45, 100], [45, 100], color=GREY, lw=.8, ls='--', label='ideal')
+    a1.plot(nom, Cv['raw'], 'o-', color=ORANGE, ms=4, lw=1.2, label='quantile regression')
+    a1.plot(nom, Cv['cqr'], 's-', color=BLUE, ms=4, lw=1.2, label='conformalised (CQR)')
+    a1.set_ylabel('empirical coverage (%)'); a1.set_xlim(45, 98); a1.set_ylim(45, 98); a1.legend(loc='upper left', fontsize=7)
+    a2.axhline(0, color='k', lw=.9)
+    a2.plot(nom, np.array(Cv['raw']) - nom, 'o-', color=ORANGE, ms=4, lw=1.2)
+    a2.plot(nom, np.array(Cv['cqr']) - nom, 's-', color=BLUE, ms=4, lw=1.2)
+    a2.set_ylabel('empirical $-$\nnominal (pp)'); a2.set_xlabel('nominal coverage (%)')
+    fig.tight_layout()
     save(fig, 'fig11_coverage.pdf')
 
 
@@ -229,7 +230,7 @@ def fig_pipeline():
 
 def fig_kcdc_audit():
     KF = json.load(open(os.path.join(ANA, 'kcdc', 'kcdc_floor_results.json')))
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.6, 2.7), gridspec_kw={'width_ratios': [1, 1.15]})
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.8, 3.0), gridspec_kw={'width_ratios': [1, 1.25]})
     L = KF['ladder']; x = np.arange(len(L))
     a1.plot(x, [r['sigma'] for r in L], 'o-', color=BLUE, ms=4, lw=1.2)
     a1.axhline(KF['floor']['nine'], color=GREEN, ls='--', lw=.9)
@@ -237,9 +238,16 @@ def fig_kcdc_audit():
     a1.set_xticks(x); a1.set_xticklabels(['four fit\nparams', '+ zenith', '+ core\ndist.', '+ muon\nsize', '+ muon\nratio'],
                                          fontsize=6.6)
     a1.set_ylabel(SIG); a1.set_title('KASCADE information ladder', fontsize=8)
-    it = KF['intermediate']; labs = ['nine features'] + ['+ ' + k for k in it] + ['oracle: MC-true sizes']
-    vals = [KF['oracle']['sigma_nine']] + [v['sigma'] for v in it.values()] + [KF['oracle']['sigma_true_sizes']]
-    cols = [BLUE] + [ORANGE] * len(it) + [GREY]
+    it = KF['intermediate']; labs = ['nine features'] + ['+ ' + k for k in it]
+    vals = [KF['oracle']['sigma_nine']] + [v['sigma'] for v in it.values()]
+    cols = [BLUE] + [ORANGE] * len(it)
+    CP = os.path.join(ANA, 'kcdc', 'kcdc_cnn_results.json')
+    if os.path.exists(CP):
+        CN = json.load(open(CP))['cnn']
+        labs += ['CNN, measured image only', '+ CNN on measured image']
+        vals += [np.mean(CN['image only']['sigma_seeds']), np.mean(CN['residual on GB(nine)']['sigma_seeds'])]
+        cols += [GREEN, GREEN]
+    labs += ['MC-truth size oracle']; vals += [KF['oracle']['sigma_true_sizes']]; cols += [GREY]
     yy = np.arange(len(labs))[::-1]
     a2.barh(yy, vals, color=cols, alpha=.75, height=.6)
     for yi, v in zip(yy, vals):

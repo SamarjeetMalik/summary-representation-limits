@@ -121,6 +121,8 @@ def compute():
         run(os.path.join('kcdc', 'run_kcdc.py'), ANA, 'run_kcdc (~1 min on 32 cores)')
         if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features.npz')):
             run(os.path.join('kcdc', 'run_kcdc_floor.py'), ANA, 'run_kcdc_floor (~15 min)')
+        if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_dense.npz')):
+            run(os.path.join('kcdc', 'run_kcdc_cnn.py'), ANA, 'run_kcdc_cnn (~10 min on one GPU)')
     else:
         print('  KCDC npz absent: skipping the KCDC arm (see analysis/kcdc/convert_kcdc.py)')
 

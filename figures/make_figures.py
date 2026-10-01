@@ -59,7 +59,12 @@ def fig1():
         keep = [(a, b) for a, b in zip(x, ys) if b is not None]
         ax.plot([a for a, _ in keep], [b for _, b in keep], ls, color=col, lw=lw,
                 marker=mk, ms=3.4, mew=.9, label=LEGEND.get(name, name), zorder=3 if name == 'NKG' else 2)
-    ax.axvspan(0.90, 1.15, color=ORANGE, alpha=.13, lw=0, zorder=0)
+    ax.axvspan(0.90, 1.15, color=ORANGE, alpha=.07, lw=0, zorder=0)
+    ns = [b_['n'] for b_ in RES['age_curves']['GradBoost']]
+    for xx, nn in zip(x, ns):                                   # events per age bin (test set)
+        ax.text(xx, 0.02, '%s' % format(nn, ','), transform=ax.get_xaxis_transform(), ha='center',
+                fontsize=6, color=GREY)
+    ax.text(0.005, 0.07, 'events per bin:', transform=ax.transAxes, fontsize=6, color=GREY)
     ax.text(1.025, ax.get_ylim()[1], 'standard\nquality cut', ha='center', va='top',
             fontsize=7.5, color='#8A5410', linespacing=1.2)
     ax.set_xlabel('shower age $s$')
