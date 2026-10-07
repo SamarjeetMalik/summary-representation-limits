@@ -264,7 +264,7 @@ def fig_audit_flow():
         ('2  Ladder', 'Which channels carry the information?',
          'nested feature sets on fixed events,\npaired bootstrap of each change',
          'control: within-event permutation of a structured channel', BLUE,
-         [('error falls: the channel helps this learner; a Bayes-risk\ngain only if the new error is below the old floor', GREEN),
+         [('error falls: the channel helps this learner; a Bayes-\nrisk gain is shown only below the old estimated floor', GREEN),
           ('no change: no detectable gain in the conditional\nmean for this learner (Proposition 2)', GREY)]),
         ('3  Rendering check', 'Is an input presented as richer really measured?',
          'channel-by-channel record: measured, or\ncomputed from $T$',

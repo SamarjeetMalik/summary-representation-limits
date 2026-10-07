@@ -463,7 +463,7 @@ if os.path.exists(kfp) and encs:
             M.update({p_ + 'Params': '%.1f' % (npar / 1e6), p_ + 'Img': f4(np_mean(io)), p_ + 'Resid': f4(np_mean(rs)),
                       p_ + 'ImgMin': f4(min(io)), p_ + 'ImgMax': f4(max(io)),
                       p_ + 'GapVar': '%.0f' % (100 * (s9_ ** 2 - np_mean(rs) ** 2) / (s9_ ** 2 - so_ ** 2))})
-    write('t_encoders.tex', r'''\begin{table}[h]
+    write('t_encoders.tex', r'''\begin{table}[tb]
 \centering\small
 \caption{Encoders of the measured KASCADE image. ``Image only'' is the encoder alone;
 ``correction'' is the encoder as a zero-initialised correction to gradient boosting on the nine
