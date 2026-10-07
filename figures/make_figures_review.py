@@ -238,7 +238,7 @@ def fig_pipeline():
 def fig_audit_flow():
     """The audit as a flow: each step's question, tool and control, and how its outcomes are read."""
     fig, ax = plt.subplots(figsize=(7.0, 7.3)); ax.axis('off'); ax.set_xlim(-0.15, 14.15); ax.set_ylim(-1.2, 14.4)
-    XL, WL, XR, WR, H, GAP = 0.0, 6.9, 7.7, 6.3, 1.82, 0.36
+    XL, WL, XR, WR, H, GAP = 0.0, 6.7, 7.4, 6.6, 1.82, 0.36
 
     def box(x, y, w, h, col, alpha=.16, ls='-'):
         ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0.04,rounding_size=0.12',
@@ -264,8 +264,8 @@ def fig_audit_flow():
         ('2  Ladder', 'Which channels carry the information?',
          'nested feature sets on fixed events,\npaired bootstrap of each change',
          'control: within-event permutation of a structured channel', BLUE,
-         [('error falls: the channel adds to $\\mathbb{E}[y\\mid\\cdot\\,]$', GREEN),
-          ('no change: no gain in the conditional mean only\n(Proposition 2)', GREY)]),
+         [('error falls: the channel helps this learner; a Bayes-risk\ngain only if the new error is below the old floor', GREEN),
+          ('no change: no detectable gain in the conditional\nmean for this learner (Proposition 2)', GREY)]),
         ('3  Rendering check', 'Is an input presented as richer really measured?',
          'channel-by-channel record: measured, or\ncomputed from $T$',
          'control: outcome predicted from step 1 before training', VERM,
@@ -282,7 +282,7 @@ def fig_audit_flow():
          'control: stratify by what drives selection and error', BLUE,
          [('worse with $S$: counterproductive in this regime', GREY),
           ('better with $S$: keep it', GREY)]),
-        ('6  Second system', 'Does the diagnosis hold elsewhere?',
+        ('Validation  Second system', 'Does the diagnosis hold elsewhere?',
          'repeat on an independent system', '', BLUE,
          [('report what replicates and what does not', GREY)]),
     ]
@@ -309,6 +309,34 @@ def fig_audit_flow():
         box(x0, yl, 0.42, 0.34, c, alpha=.3)
         ax.text(x0 + 0.58, yl + 0.17, lab, ha='left', va='center', fontsize=6.4)
     save(fig, 'fig13_audit_flow.pdf')
+
+
+def fig_benchmark():
+    """The known-truth benchmark: the floor estimate against the truth, and learners against the floor."""
+    S = R['synthetic']['rows']
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(7.0, 2.5), gridspec_kw={'width_ratios': [1, 1.15], 'wspace': .32})
+    keys = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T+M', 'T+M+V', 'X']
+    dims = [1, 2, 3, 4, 5, 6, 7, 8, 32]
+    err = [S[k]['gamma_err_pct'] for k in keys]
+    a1.axhspan(-2, 2, color=GREEN, alpha=.12, lw=0)
+    a1.axhline(0, color='k', lw=.8)
+    a1.plot(range(len(keys)), err, 'o-', color=BLUE, ms=4.5, lw=1)
+    a1.set_xticks(range(len(keys))); a1.set_xticklabels([str(d) for d in dims])
+    a1.set_xlabel('dimension of the representation'); a1.set_ylabel('floor estimate $-$ truth (%)')
+    a1.annotate('%+.0f%%' % err[-1], xy=(len(keys) - 1, err[-1]), xytext=(len(keys) - 2.6, err[-1] - 1.5), fontsize=7.5, color=BLUE)
+    a1.text(0.1, 2.6, '$\\pm2\\%$', fontsize=7, color=GREEN)
+    a1.set_title('step 1 against the truth', fontsize=8.5)
+    reps = [('T6', 'summary $T$'), ('T+M', '$T$ and $M$'), ('X', 'measurement $X$')]
+    x = np.arange(len(reps)); w = .26
+    a2.bar(x - w, [S[k]['true_floor'] for k, _ in reps], w, color='0.25', label='true floor')
+    a2.bar(x, [S[k]['gb'] for k, _ in reps], w, color=BLUE, label='gradient boosting')
+    a2.bar(x + w, [S[k]['mlp'] for k, _ in reps], w, color=PURPLE, label='MLP')
+    a2.set_xticks(x); a2.set_xticklabels([l for _, l in reps], fontsize=7.5)
+    a2.set_ylabel('root-mean-square error'); a2.legend(fontsize=7, loc='upper right')
+    a2.annotate('learner-limited', xy=(2, S['X']['gb']), xytext=(1.25, S['X']['gb'] + 0.22), fontsize=7.5, color=BLUE,
+                arrowprops=dict(arrowstyle='->', color=BLUE, lw=.7))
+    a2.set_title('learners against the true floor', fontsize=8.5)
+    save(fig, 'fig14_benchmark.pdf')
 
 
 def fig_kcdc_audit():
@@ -344,7 +372,7 @@ def fig_kcdc_audit():
 
 
 if __name__ == '__main__':
-    for f in (fig_pipeline, fig_audit_flow, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage,
+    for f in (fig_pipeline, fig_audit_flow, fig_benchmark, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage,
               fig_kcdc_audit):
         try:
             f()
