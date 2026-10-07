@@ -238,7 +238,7 @@ def fig_pipeline():
 def fig_audit_flow():
     """The audit as a flow: each step's question, tool and control, and how its outcomes are read."""
     fig, ax = plt.subplots(figsize=(7.0, 7.3)); ax.axis('off'); ax.set_xlim(-0.15, 14.15); ax.set_ylim(-1.2, 14.4)
-    XL, WL, XR, WR, H, GAP = 0.0, 6.7, 7.4, 6.6, 1.82, 0.36
+    XL, WL, XR, WR, H, GAP = 0.0, 6.5, 7.1, 6.9, 1.82, 0.36
 
     def box(x, y, w, h, col, alpha=.16, ls='-'):
         ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0.04,rounding_size=0.12',
@@ -264,7 +264,7 @@ def fig_audit_flow():
         ('2  Ladder', 'Which channels carry the information?',
          'nested feature sets on fixed events,\npaired bootstrap of each change',
          'control: within-event permutation of a structured channel', BLUE,
-         [('error falls: the channel helps this learner; a Bayes-\nrisk gain is shown only below the old estimated floor', GREEN),
+         [('error falls: the channel helps this learner; evidence of a\nBayes-risk gain needs an error below the old estimated floor', GREEN),
           ('no change: no detectable gain in the conditional\nmean for this learner (Proposition 2)', GREY)]),
         ('3  Rendering check', 'Is an input presented as richer really measured?',
          'channel-by-channel record: measured, or\ncomputed from $T$',
