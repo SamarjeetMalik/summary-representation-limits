@@ -23,7 +23,7 @@ d = C.load_root(); c = C.load_csv()
 X = C.build_features(d); y = d['y']
 r_idx, _ = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-train_all = np.where(~test)[0]
+train_all = np.where(C.train_mask(d, test))[0]
 y_te, age_te = y[r_idx], d['Age'][r_idx]
 
 print('fitting 3 seeds for the event-bootstrap...')

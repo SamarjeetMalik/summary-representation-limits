@@ -11,7 +11,12 @@ intermediate representations between "four fitted parameters" and "all 252 stati
   counts and totals:      number of e/gamma and muon stations with signal, log total deposits
   timing:                 spread of arrival times over stations with signal
 
-The file is ordered by primary, so events are read in evenly spread chunks. Output:
+The file is ordered by primary and its energy spectrum varies along it, so a few large blocks are
+not a random sample of the release: with 24 blocks of 20,000 events (the first version of this
+script; results kept in analysis/kcdc/blocks24/) the energy spread, the primary mix and the
+MC-truth oracle all differed from those of a uniform sample (oracle 0.0707 against about 0.080).
+Events are therefore read as 2,400 blocks of 200, evenly spaced over the file, which is uniform
+at the scale on which the file's ordering varies. Output:
 data/kcdc/kcdc_station_features.npz (with the summary, the MC truth and Run/Ev), and
 data/kcdc/kcdc_station_dense.npz: the full per-station signals (e/gamma deposit, muon deposit,
 arrival time) as dense (event, station 1..252) float16 arrays, for the learned-encoder test.
@@ -26,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOTDIR = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
 OUT = os.path.join(ROOTDIR, 'kcdc_station_features.npz')
 OUT_DENSE = os.path.join(ROOTDIR, 'kcdc_station_dense.npz')
-NCHUNK, CH = int(os.environ.get('NCHUNK', '24')), int(os.environ.get('CHUNK', '20000'))
+NCHUNK, CH = int(os.environ.get('NCHUNK', '2400')), int(os.environ.get('CHUNK', '200'))
 E_EDGES = [0, 20, 40, 60, 80, 110, 1e9]
 M_EDGES = [0, 40, 70, 100, 1e9]
 
@@ -75,7 +80,8 @@ for k, o in enumerate(offs):
         dense = np.zeros((n, 252), np.float32); dense[ev, sid - 1] = v
         rec[name] = dense.astype(np.float16)
     parts.append(rec)
-    print('  chunk %2d/%d at %d: %d events' % (k + 1, NCHUNK, o, n), flush=True)
+    if (k + 1) % 200 == 0:
+        print('  block %4d/%d at %d' % (k + 1, NCHUNK, o), flush=True)
 
 D = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
 dense = {k: D.pop(k) for k in ('dense_e', 'dense_mu', 'dense_t')}

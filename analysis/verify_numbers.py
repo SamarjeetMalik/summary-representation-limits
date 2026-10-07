@@ -13,7 +13,7 @@ import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 R = json.load(open(os.path.join(HERE, 'results.json')))
-TEXNAME = sys.argv[1] if len(sys.argv) > 1 else 'mlst.tex'
+TEXNAME = sys.argv[1] if len(sys.argv) > 1 else 'manuscript.tex'
 TEX = open(os.path.join(ROOT, TEXNAME), encoding='utf-8').read()
 print('auditing: %s' % TEXNAME)
 

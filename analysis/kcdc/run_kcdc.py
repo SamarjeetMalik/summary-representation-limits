@@ -1,4 +1,4 @@
-"""KCDC (KASCADE, CORSIKA + QGSJET-II-04) arm of the MLST paper.
+"""KCDC (KASCADE, CORSIKA + QGSJET-II-04) arm of the journal paper.
 
 Scope: this script does not measure an estimator plateau or a Bayes floor on KCDC. It does:
 

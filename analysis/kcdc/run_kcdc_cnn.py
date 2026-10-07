@@ -38,10 +38,14 @@ from sklearn.preprocessing import StandardScaler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
-OUT = os.path.join(HERE, 'kcdc_cnn_results.json')
+# ENCODER selects the network: 'small' is the CNN of the main experiment; 'resnet' and 'settx' are
+# the larger and the differently structured encoders of the capacity check, each written to its
+# own results file so the main experiment is never overwritten.
+ENCODER = os.environ.get('ENCODER', 'small')
+OUT = os.path.join(HERE, 'kcdc_cnn_results.json' if ENCODER == 'small' else 'kcdc_cnn_%s_results.json' % ENCODER)
 DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 EPOCHS, BS, NB = int(os.environ.get('EPOCHS', '20')), 512, 1000
-SEEDS = (42, 43, 44)
+SEEDS = (42, 43, 44) if ENCODER == 'small' else (42, 43)
 torch.set_num_threads(int(os.environ.get('TORCH_THREADS', '8')))
 
 F = dict(np.load(os.path.join(DATA, 'kcdc_station_features.npz')))
@@ -105,26 +109,114 @@ class Net(nn.Module):
         return self.h(torch.cat([h, z], 1) if self.use_nine else h).squeeze(-1)
 
 
+class Block(nn.Module):
+    def __init__(self, cin, cout):
+        super().__init__()
+        self.a = nn.Sequential(nn.Conv2d(cin, cout, 3, padding=1), nn.GroupNorm(8, cout), nn.ReLU(),
+                               nn.Conv2d(cout, cout, 3, padding=1), nn.GroupNorm(8, cout))
+        self.s = nn.Identity() if cin == cout else nn.Conv2d(cin, cout, 1)
+
+    def forward(self, x):
+        return torch.relu(self.a(x) + self.s(x))
+
+
+class ResNet(nn.Module):
+    """A residual network about thirty times the size of Net."""
+    def __init__(self, use_nine):
+        super().__init__()
+        self.use_nine = use_nine
+        self.f = nn.Sequential(Block(4, 96), Block(96, 96), nn.MaxPool2d(2), Block(96, 192), Block(192, 192),
+                               nn.MaxPool2d(2), Block(192, 384), Block(384, 384), nn.AdaptiveAvgPool2d(1), nn.Flatten())
+        self.h = nn.Sequential(nn.Linear(384 + (9 if use_nine else 0), 256), nn.ReLU(), nn.Linear(256, 1))
+        if use_nine:
+            nn.init.zeros_(self.h[-1].weight); nn.init.zeros_(self.h[-1].bias)
+
+    def forward(self, x, z):
+        h = self.f(x)
+        return self.h(torch.cat([h, z], 1) if self.use_nine else h).squeeze(-1)
+
+
+class SetTx(nn.Module):
+    """A transformer over stations: one token per grid node, no convolution."""
+    def __init__(self, use_nine, dim=128, depth=6, heads=8):
+        super().__init__()
+        self.use_nine = use_nine
+        self.emb = nn.Linear(4, dim)
+        self.pos = nn.Parameter(torch.zeros(1, 257, dim)); nn.init.trunc_normal_(self.pos, std=0.02)
+        self.cls = nn.Parameter(torch.zeros(1, 1, dim))
+        layer = nn.TransformerEncoderLayer(dim, heads, 4 * dim, dropout=0.0, batch_first=True, norm_first=True)
+        self.enc = nn.TransformerEncoder(layer, depth); self.norm = nn.LayerNorm(dim)
+        self.h = nn.Sequential(nn.Linear(dim + (9 if use_nine else 0), 128), nn.ReLU(), nn.Linear(128, 1))
+        if use_nine:
+            nn.init.zeros_(self.h[-1].weight); nn.init.zeros_(self.h[-1].bias)
+
+    def forward(self, x, z):
+        t_ = self.emb(x.flatten(2).transpose(1, 2))
+        t_ = torch.cat([self.cls.expand(len(t_), -1, -1), t_], 1) + self.pos
+        h = self.norm(self.enc(t_)[:, 0])
+        return self.h(torch.cat([h, z], 1) if self.use_nine else h).squeeze(-1)
+
+
+NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx}
+# The residual network was first trained with the CNN's recipe (AdamW 1e-3, cosine, no warm-up).
+# It did not generalise: image-only 0.153-0.156 at the final epoch, worse than the small CNN, and
+# the zero-initialised correction never left zero. A second attempt at 3e-4 with warm-up and
+# gradient clipping was worse still at the final epoch (0.174). Both logs are kept
+# (kcdc_cnn_resnet_lr1e-3.log, enc_resnet_v2.log). The larger encoders are therefore trained with
+# early stopping on a validation set: a tenth of the TRAINING showers is held out, the weights
+# with the best validation error are kept, and the test set plays no part in the choice.
+LR = float(os.environ.get('LR', {'small': 1e-3, 'resnet': 3e-4, 'settx': 5e-4}[ENCODER]))
+WARMUP = ENCODER == 'resnet'
+EARLY = ENCODER != 'small'
+
+
 def train(use_nine, seed):
     torch.manual_seed(seed); np.random.seed(seed)
-    net = Net(use_nine).to(DEV)
+    net = NETS[ENCODER](use_nine).to(DEV)
+    if seed == SEEDS[0] and not use_nine:
+        print('  encoder %s: %d parameters' % (ENCODER, sum(p.numel() for p in net.parameters())), flush=True)
     target = (y - BASE) if use_nine else y                # residual mode learns a correction
     ym, ys = (0.0, float(target[tr].std())) if use_nine else (float(y[tr].mean()), float(y[tr].std()))
-    opt = torch.optim.AdamW(net.parameters(), lr=1e-3, weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=EPOCHS * math.ceil(len(tr) / BS))
+    opt = torch.optim.AdamW(net.parameters(), lr=LR, weight_decay=1e-4)
+    spe = math.ceil(len(tr) / BS)                           # a little long under early stopping: harmless
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=EPOCHS * spe)
+    if WARMUP:
+        sched = torch.optim.lr_scheduler.SequentialLR(opt, [
+            torch.optim.lr_scheduler.LinearLR(opt, start_factor=0.05, total_iters=spe),
+            torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=(EPOCHS - 1) * spe)], milestones=[spe])
     Xi = torch.from_numpy(IMG); Z = torch.from_numpy(NINE_Z); Y = torch.from_numpy(((target - ym) / ys).astype(np.float32))
     lossf = nn.MSELoss(); t0 = time.time()
+    fit = tr
+    if EARLY:                                              # validation showers, drawn from training only
+        vs = np.random.default_rng(100 + seed).random(shower.max() + 1) < 0.10
+        fit, val = tr[~vs[shower[tr]]], tr[vs[shower[tr]]]
+        best, best_state, best_ep = np.inf, None, -1
+
+    def predict(rows):
+        net.eval(); o = []
+        with torch.no_grad():
+            for i in range(0, len(rows), 4096):
+                j = torch.from_numpy(rows[i:i + 4096])
+                o.append(net(Xi[j].to(DEV), Z[j].to(DEV)).cpu().numpy())
+        return np.concatenate(o)
+
     for ep in range(EPOCHS):
-        net.train(); perm = torch.from_numpy(np.random.permutation(tr))
+        net.train(); perm = torch.from_numpy(np.random.permutation(fit))
         for i in range(0, len(perm), BS):
             j = perm[i:i + BS]
-            opt.zero_grad(); L = lossf(net(Xi[j].to(DEV), Z[j].to(DEV)), Y[j].to(DEV)); L.backward(); opt.step(); sched.step()
-    net.eval(); out = []
-    with torch.no_grad():
-        for i in range(0, len(te), 4096):
-            j = torch.from_numpy(te[i:i + 4096])
-            out.append(net(Xi[j].to(DEV), Z[j].to(DEV)).cpu().numpy())
-    p = np.concatenate(out) * ys + ym + (BASE[te] if use_nine else 0)
+            opt.zero_grad(); L = lossf(net(Xi[j].to(DEV), Z[j].to(DEV)), Y[j].to(DEV)); L.backward()
+            if WARMUP:
+                torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            opt.step(); sched.step()
+        if EARLY:
+            v = float(((predict(val) - Y[val].numpy()) ** 2).mean())
+            if v < best:
+                best, best_ep = v, ep + 1
+                best_state = {k: t_.detach().clone() for k, t_ in net.state_dict().items()}
+    if EARLY:
+        net.load_state_dict(best_state)
+        print('    early stopping: best validation epoch %d of %d' % (best_ep, EPOCHS), flush=True)
+    p = predict(te) * ys + ym + (BASE[te] if use_nine else 0)
     print('  CNN %s seed %d: sigma %.4f (%.0fs)' % ('residual on GB(nine)' if use_nine else 'image only', seed,
                                                    float((p - yt).std()), time.time() - t0), flush=True)
     return p - yt
@@ -153,7 +245,8 @@ def paired(a, b):
     return round(float(a.std() - b.std()), 5), [round(float(v), 5) for v in np.percentile(dl, [2.5, 97.5])]
 
 
-R = {'n_events': int(len(ids)), 'n_train': int(len(tr)), 'n_test': int(len(te)), 'epochs': EPOCHS,
+R = {'encoder': ENCODER, 'n_params': int(sum(p.numel() for p in NETS[ENCODER](False).parameters())),
+     'n_events': int(len(ids)), 'n_train': int(len(tr)), 'n_test': int(len(te)), 'epochs': EPOCHS,
      'gb_nine': round(float(e_nine.std()), 4), 'gb_engineered': round(float(e_eng.std()), 4), 'cnn': {}}
 for use_nine in (False, True):
     key = 'residual on GB(nine)' if use_nine else 'image only'

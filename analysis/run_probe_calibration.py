@@ -41,7 +41,7 @@ d = C.load_root(); c = C.load_csv()
 X9 = C.build_features(d); y = d['y']
 r_idx, c_idx = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-train = ~test
+train = C.train_mask(d, test)
 y_te = y[r_idx]
 
 PHI = np.column_stack([d['log_Ne'], d['Age'], d['NKGX'], d['NKGY']])

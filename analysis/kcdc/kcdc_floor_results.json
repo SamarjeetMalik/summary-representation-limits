@@ -1,22 +1,22 @@
 {
-  "n_events": 430520,
-  "n_showers": 247394,
-  "n_train": 323105,
-  "n_test": 107415,
-  "target_sd": 0.2446,
+  "n_events": 409848,
+  "n_showers": 379604,
+  "n_train": 307365,
+  "n_test": 102483,
+  "target_sd": 0.2606,
   "plateau": {
-    "Ridge": 0.1624,
-    "RandomForest": 0.1456,
-    "GradBoost": 0.1445,
-    "MLP": 0.1447,
-    "kNN (k=50)": 0.1473
+    "Ridge": 0.1633,
+    "RandomForest": 0.1498,
+    "GradBoost": 0.1485,
+    "MLP": 0.1495,
+    "kNN (k=50)": 0.1517
   },
   "floor": {
-    "nine": 0.144,
+    "nine": 0.1479,
     "controls": [
       {
         "true_sd": 0.1,
-        "est": 0.1
+        "est": 0.0999
       },
       {
         "true_sd": 0.15,
@@ -24,96 +24,96 @@
       }
     ],
     "frac_with_other_shower_neighbours": 1.0,
-    "oracle": 0.0702
+    "oracle": 0.0805
   },
   "ladder": [
     {
       "rung": "A",
       "label": "four fit parameters",
-      "sigma": 0.1999
+      "sigma": 0.2015
     },
     {
       "rung": "B",
       "label": "+ zenith angle",
-      "sigma": 0.1797,
-      "delta": -0.02011,
+      "sigma": 0.175,
+      "delta": -0.02649,
       "delta_ci": [
-        -0.02067,
-        -0.01962
+        -0.02707,
+        -0.0259
       ]
     },
     {
       "rung": "C",
       "label": "+ core distance",
-      "sigma": 0.1797,
-      "delta": -2e-05,
+      "sigma": 0.175,
+      "delta": -3e-05,
       "delta_ci": [
-        -6e-05,
-        2e-05
+        -7e-05,
+        1e-05
       ]
     },
     {
       "rung": "D",
       "label": "+ muon size",
-      "sigma": 0.1446,
-      "delta": -0.03518,
+      "sigma": 0.1486,
+      "delta": -0.02636,
       "delta_ci": [
-        -0.0358,
-        -0.03447
+        -0.02697,
+        -0.02576
       ]
     },
     {
       "rung": "E",
       "label": "+ muon ratio (nine features)",
-      "sigma": 0.1445,
-      "delta": -4e-05,
+      "sigma": 0.1485,
+      "delta": -8e-05,
       "delta_ci": [
-        -7e-05,
-        0.0
+        -0.00012,
+        -4e-05
       ]
     }
   ],
   "oracle": {
-    "sigma_nine": 0.1445,
-    "sigma_true_sizes": 0.0707,
-    "gap": 0.0738
+    "sigma_nine": 0.1485,
+    "sigma_true_sizes": 0.0807,
+    "gap": 0.0678
   },
   "intermediate": {
     "radial e/gamma profile": {
-      "sigma": 0.1444,
+      "sigma": 0.1484,
       "delta": -0.00016,
       "ci": [
-        -0.00025,
-        -6e-05
+        -0.00028,
+        -5e-05
       ],
       "gap_recovered_pct": 0.2
     },
     "radial muon profile": {
-      "sigma": 0.141,
-      "delta": -0.00352,
+      "sigma": 0.1458,
+      "delta": -0.00277,
       "ci": [
-        -0.00373,
-        -0.00332
+        -0.00298,
+        -0.00256
       ],
-      "gap_recovered_pct": 4.8
+      "gap_recovered_pct": 4.1
     },
     "both radial profiles": {
-      "sigma": 0.1407,
-      "delta": -0.0038,
+      "sigma": 0.1455,
+      "delta": -0.003,
       "ci": [
-        -0.00402,
-        -0.00358
+        -0.00323,
+        -0.00277
       ],
-      "gap_recovered_pct": 5.2
+      "gap_recovered_pct": 4.4
     },
     "profiles + counts, totals, timing": {
-      "sigma": 0.1391,
-      "delta": -0.00539,
+      "sigma": 0.1438,
+      "delta": -0.00468,
       "ci": [
-        -0.00567,
-        -0.00513
+        -0.00496,
+        -0.00443
       ],
-      "gap_recovered_pct": 7.3
+      "gap_recovered_pct": 6.9
     }
   }
 }

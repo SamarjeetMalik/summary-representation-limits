@@ -49,7 +49,7 @@ def gamma_floor(Xr, yr, K=10):
 
 
 def run(name, mask, mname):
-    tr = np.where(mask & ~test)[0]; te = np.where(mask & test)[0]
+    tr = np.where(mask & C.train_mask(d, test))[0]; te = np.where(mask & test)[0]
     p = MODELS[mname]().fit(X[tr], y[tr]).predict(X[te])
     return name, mname, C.sigma(p, y[te]), len(tr), len(te)
 

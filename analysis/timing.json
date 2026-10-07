@@ -1,0 +1,39 @@
+{
+  "machine": {
+    "cores": 10,
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "processor": "arm64"
+  },
+  "stages": {
+    "floor": {
+      "script": "run_tmlr_checks.py",
+      "what": "step 1: floor estimates with shower-level intervals and controls",
+      "seconds": 23.9
+    },
+    "ladder": {
+      "script": "run_ladder.py",
+      "what": "step 2: seven rungs, three seeds each, paired bootstrap, permutation control",
+      "seconds": 26.0
+    },
+    "probe": {
+      "script": "run_probe_calibration.py",
+      "what": "step 4: probe on fourteen outputs and controls, two columns each",
+      "seconds": 119.4
+    },
+    "selection": {
+      "script": "run_selection_robustness.py",
+      "what": "step 5: three selections, retraining, four seeds",
+      "seconds": 22.5
+    },
+    "crossfit": {
+      "script": "run_shower_crossfit.py",
+      "what": "steps 1, 2 and 5 again under the five-fold shower cross-fit",
+      "seconds": 215.6
+    },
+    "networks": {
+      "script": "run_rendering.py",
+      "what": "step 3: three CNN trainings on rendered images (the inputs being audited)",
+      "seconds": 2842.4
+    }
+  }
+}

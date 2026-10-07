@@ -1,4 +1,4 @@
-"""Automated figure/table cross-reference audit for a built manuscript (default: mlst).
+"""Automated figure/table cross-reference audit for a built manuscript (default: manuscript).
 
 Checks, using the .tex source and the .aux written by the last pdflatex run:
   1. every \\ref to a figure or table resolves (also done by check_refs.py);
@@ -7,12 +7,12 @@ Checks, using the .tex source and the .aux written by the last pdflatex run:
   3. main-text floats are numbered in the order of their first citation in the main text;
   4. every float is cited at least once, and each main-text float is printed no more than two
      pages from its first citation (from the page numbers recorded in the .aux).
-Exits non-zero on any failure.  Usage:  python tools/check_floats.py [mlst]  (build the PDF first)
+Exits non-zero on any failure.  Usage:  python tools/check_floats.py [manuscript]  (build the PDF first)
 """
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-name = sys.argv[1] if len(sys.argv) > 1 else 'mlst'
+name = sys.argv[1] if len(sys.argv) > 1 else 'manuscript'
 tex = open(os.path.join(ROOT, name + '.tex'), encoding='utf-8').read()
 tex = re.sub(r'(?<!\\)%.*', '', tex)
 for inc in re.findall(r'\\input\{([^}]+)\}', tex):                 # inline generated tables

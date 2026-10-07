@@ -1,4 +1,4 @@
-"""Shared data loading for the R/PS 2026 Research Note.
+"""Shared data loading for the manuscript.
 
 Design note
 -----------
@@ -132,3 +132,40 @@ def bootstrap_ci(values, n=4000, alpha=0.05, seed=0):
     means = [rng.choice(v, len(v), replace=True).mean() for _ in range(n)]
     lo, hi = np.percentile(means, [100 * alpha / 2, 100 * (1 - alpha / 2)])
     return float(lo), float(hi)
+
+
+def shower_ids(d):
+    """Group index of the CORSIKA shower each event was thrown from (true energy, primary)."""
+    _, g = np.unique(np.column_stack([d['PrimaryEnergy'], d['PrimaryID'].astype(float)]),
+                     axis=0, return_inverse=True)
+    return g.ravel()
+
+
+_TRAINABLE = {}
+
+
+def train_mask(d, test):
+    """Events a model may be trained on, given the mask of evaluation events.
+
+    Default (GRAPES3_SPLIT=random): the plain complement of the evaluation events.
+
+    GRAPES3_SPLIT=exclude drops every event whose shower has a copy among the evaluation events.
+    That removes the leak but it is NOT an unbiased training sample: a shower with k copies
+    survives with probability 0.8^k, so the survivors are showers with few copies (mean 3.9
+    against 5.1) and a different primary mix. Numbers obtained that way mix the leak with a
+    covariate shift. The unbiased shower-disjoint protocol is the cross-fit in
+    run_shower_crossfit.py, built on shower_folds() below.
+    """
+    if os.environ.get('GRAPES3_SPLIT', 'random') != 'exclude':
+        return ~test
+    key = (id(d), int(test.sum()))
+    if key not in _TRAINABLE:
+        g = shower_ids(d)
+        _TRAINABLE[key] = ~np.isin(g, np.unique(g[test]))
+    return _TRAINABLE[key]
+
+
+def shower_folds(d, k=5, seed=0):
+    """Fold index per event, assigned by shower: all copies of a shower share a fold."""
+    g = shower_ids(d)
+    return np.random.default_rng(seed).integers(0, k, g.max() + 1)[g]

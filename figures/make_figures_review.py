@@ -79,8 +79,8 @@ def fig_ladder():
     save(fig, 'fig6_ladder.pdf')
 
 
-def fig_probe_map():
-    P = R['probe_calibration']; rows = P['rows']
+def fig_probe_map(P=None, out='fig7_probe_map.pdf'):
+    P = P or R['probe_calibration']; rows = P['rows']
     fig, ax = plt.subplots(figsize=(6.0, 3.4))
     ax.plot([0.55, 1.002], [0.55, 1.002], color=GREY, lw=.7, ls=':')
     pts = [('gb_phi', 'GB on $\\phi$', BLUE, 'o'), ('linear_Ne_s', 'size-age calib.', BLUE, 's'),
@@ -103,12 +103,19 @@ def fig_probe_map():
     ax.set_xlabel(r'$R^2_{\mathrm{deg}}(\phi)$, fitted parameters only')
     ax.set_ylabel(r'$R^2_{\mathrm{deg}}(\phi, M)$, + muons and zenith')
     ax.set_xlim(0.55, 1.005); ax.set_ylim(0.55, 1.005)
+    # the three readings of the map (the protocol's step 4)
+    kw = dict(fontsize=6.4, color='0.35', style='italic')
+    ax.annotate('function of $\\phi$', xy=(0.997, 0.997), xytext=(0.965, 0.87), ha='center', **kw,
+                arrowprops=dict(arrowstyle='-', color='0.6', lw=.5))
+    ax.text(0.70, 0.975, 'uses a measured channel outside $\\phi$', ha='center', va='top', **kw)
+    ax.text(0.80, 0.765, 'noise-like, or an unlisted channel', ha='left', va='center', rotation=38, **kw)
     ax.legend(loc='center left', fontsize=6.6, handletextpad=.3, bbox_to_anchor=(1.02, 0.5))
-    save(fig, 'fig7_probe_map.pdf')
+    save(fig, out)
 
 
-def fig_regimes():
-    G = R['regimes']['rows']; names = list(G); EX = R.get('group_checks', {}).get('regime_excess')
+def fig_regimes(RG=None, EX=None, out='fig8_regimes.pdf'):
+    G = (RG or R['regimes'])['rows']; names = list(G)
+    EX = EX or R.get('group_checks', {}).get('regime_excess')
     fig, ax = plt.subplots(figsize=(5.2, 2.6))
     models = [('Ridge', SKY, 'o'), ('RandomForest', GREEN, 's'), ('MLP', PURPLE, 'D')]
     for j, (m, col, mk) in enumerate(models):
@@ -128,7 +135,7 @@ def fig_regimes():
     ax.set_xticklabels([n.replace('logNe ', r'$\log_{10}N_e$ ').replace('zenith ', 'zenith\n') for n in names], fontsize=7.5)
     ax.set_ylabel('$\\sigma$ above regime floor estimate (%)')
     ax.legend(ncol=4, loc='upper center', bbox_to_anchor=(.5, 1.18), fontsize=7)
-    save(fig, 'fig8_regimes.pdf')
+    save(fig, out)
 
 
 def fig_learning():
@@ -228,6 +235,82 @@ def fig_pipeline():
     save(fig, 'fig0_pipeline.pdf')
 
 
+def fig_audit_flow():
+    """The audit as a flow: each step's question, tool and control, and how its outcomes are read."""
+    fig, ax = plt.subplots(figsize=(7.0, 7.3)); ax.axis('off'); ax.set_xlim(-0.15, 14.15); ax.set_ylim(-1.2, 14.4)
+    XL, WL, XR, WR, H, GAP = 0.0, 6.9, 7.7, 6.3, 1.82, 0.36
+
+    def box(x, y, w, h, col, alpha=.16, ls='-'):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle='round,pad=0.04,rounding_size=0.12',
+                                    fc=col, ec=col, lw=.8, alpha=alpha, ls=ls))
+
+    def arrow(x0, y0, x1, y1, col=GREY, lw=.9):
+        ax.annotate('', xy=(x1, y1), xytext=(x0, y0), arrowprops=dict(arrowstyle='->', color=col, lw=lw))
+
+    top = 13.5
+    box(XL, top, WL, 0.8, GREY)
+    ax.text(XL + WL / 2, top + 0.4, 'models trained on a representation $T$ stop improving',
+            ha='center', va='center', fontsize=7.0)
+    box(XR, top, WR, 0.8, GREY, alpha=.0)
+    ax.text(XR + WR / 2, top + 0.4, 'how each outcome is read', ha='center', va='center', fontsize=7.4,
+            style='italic', color=GREY)
+
+    steps = [
+        ('1  Floor', 'What can this representation support?',
+         'model-free estimate $\\hat\\sigma_{\\mathrm{B}}(T)$ of the floor, beside\nestimators of unrelated inductive bias',
+         'control: known noise on the real feature matrix', BLUE,
+         [('$\\sigma$ within the spread of $\\hat\\sigma_{\\mathrm{B}}$: representation-limited', GREEN),
+          ('$\\sigma$ well above it, or estimators disagree:\nlearner-limited; change learner, data, optimisation', PURPLE)]),
+        ('2  Ladder', 'Which channels carry the information?',
+         'nested feature sets on fixed events,\npaired bootstrap of each change',
+         'control: within-event permutation of a structured channel', BLUE,
+         [('error falls: the channel adds to $\\mathbb{E}[y\\mid\\cdot\\,]$', GREEN),
+          ('no change: no gain in the conditional mean only\n(Proposition 2)', GREY)]),
+        ('3  Rendering check', 'Is an input presented as richer really measured?',
+         'channel-by-channel record: measured, or\ncomputed from $T$',
+         'control: outcome predicted from step 1 before training', VERM,
+         [('computed from $T$: cannot lower the squared-loss\nBayes risk (Proposition 1)', VERM),
+          ('measured: it may; test it (positive control)', GREEN)]),
+        ('4  Degeneracy probe', 'Did a trained model use anything beyond $T$?',
+         'out-of-fold regression of the output $m$ on $T$\nand on $(T,M)$',
+         'control: outputs of known construction; two training runs', BLUE,
+         [('near 1 on $T$: output is a function of $T$', GREY),
+          ('low on $T$, near 1 on $(T,M)$: model used $M$', GREEN),
+          ('low on both: noise-like, or an unlisted channel', GREY)]),
+        ('5  Selection', 'Does an inherited selection $S$ still help here?',
+         'score with and without $S$, retrain within $S$,\nreport what $S$ was meant to protect',
+         'control: stratify by what drives selection and error', BLUE,
+         [('worse with $S$: counterproductive in this regime', GREY),
+          ('better with $S$: keep it', GREY)]),
+        ('6  Second system', 'Does the diagnosis hold elsewhere?',
+         'repeat on an independent system', '', BLUE,
+         [('report what replicates and what does not', GREY)]),
+    ]
+    y = top - GAP - H
+    for i, (name, q, tool, ctrl, col, outs) in enumerate(steps):
+        box(XL, y, WL, H, col)
+        ax.text(XL + 0.18, y + H - 0.1, name, ha='left', va='top', fontsize=7.6, fontweight='bold')
+        ax.text(XL + 0.18, y + H - 0.47, q, ha='left', va='top', fontsize=6.9, style='italic')
+        ax.text(XL + 0.18, y + H - 0.84, tool, ha='left', va='top', fontsize=6.6, linespacing=1.15)
+        ax.text(XL + 0.18, y + 0.09, ctrl, ha='left', va='bottom', fontsize=6.2, color='0.3')
+        arrow(XL + WL / 2, y + H + GAP - 0.02, XL + WL / 2, y + H + 0.04)
+        n = len(outs)
+        for j, (txt, c) in enumerate(outs):
+            hh = (H - 0.1 * (n - 1)) / n
+            yy = y + H - (j + 1) * hh - 0.1 * j
+            box(XR, yy, WR, hh, c, alpha=.12)
+            ax.text(XR + 0.16, yy + hh / 2, txt, ha='left', va='center', fontsize=6.4, linespacing=1.1)
+            arrow(XL + WL + 0.06, y + H / 2, XR - 0.06, yy + hh / 2, col='0.55', lw=.6)
+        y -= H + GAP
+    # legend
+    yl = -1.1
+    for x0, c, lab in ((0.0, VERM, 'guarantee'), (2.2, BLUE, 'estimate, read with its control'),
+                       (7.7, GREEN, 'positive finding'), (10.6, PURPLE, 'learner limit'), (13.0, GREY, 'other')):
+        box(x0, yl, 0.42, 0.34, c, alpha=.3)
+        ax.text(x0 + 0.58, yl + 0.17, lab, ha='left', va='center', fontsize=6.4)
+    save(fig, 'fig13_audit_flow.pdf')
+
+
 def fig_kcdc_audit():
     KF = json.load(open(os.path.join(ANA, 'kcdc', 'kcdc_floor_results.json')))
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.8, 3.0), gridspec_kw={'width_ratios': [1, 1.25]})
@@ -261,9 +344,13 @@ def fig_kcdc_audit():
 
 
 if __name__ == '__main__':
-    for f in (fig_pipeline, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage,
+    for f in (fig_pipeline, fig_audit_flow, fig_ladder, fig_probe_map, fig_regimes, fig_learning, fig_energy, fig_coverage,
               fig_kcdc_audit):
         try:
             f()
         except (KeyError, FileNotFoundError) as e:
             print('  %s skipped: results.json lacks %s' % (f.__name__, e))
+    CS = R.get('crossfit_secondary')                      # the same two figures under the shower cross-fit
+    if CS:
+        fig_probe_map(CS['probe_calibration'], 'fig7_probe_map_cf.pdf')
+        fig_regimes(CS['regimes'], CS['regimes']['regime_excess'], 'fig8_regimes_cf.pdf')

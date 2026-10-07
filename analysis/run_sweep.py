@@ -81,7 +81,7 @@ c = C.load_csv()
 y = d['y']
 r_idx, _ = C.match(d, c)
 test_mask = np.zeros(len(y), bool); test_mask[r_idx] = True
-pool = np.where(~test_mask)[0]
+pool = np.where(C.train_mask(d, test_mask))[0]
 NTRAIN = R['rendering']['n_train']
 tr = np.random.default_rng(42).choice(pool, NTRAIN, replace=False)   # same seed => same split
 te = r_idx
@@ -96,23 +96,27 @@ ym, ys = y[tr].mean(), y[tr].std()
 print('  train %d, test %d, %d pixels' % (len(tr), len(te), flat_tr.shape[1]))
 
 SW = {}
+SEED_ONLY = os.environ.get('RENDER_SEED')          # seed study: ViT only, see run_render_seeds.py
+if SEED_ONLY:
+    torch.manual_seed(int(SEED_ONLY))
 
-# ------------------------------------------------------------ E: linear
-print('\nE  Ridge on flattened pixels')
-t0 = time.time()
-p = make_pipeline(StandardScaler(), Ridge(alpha=10.0)).fit(flat_tr, y[tr]).predict(flat_te)
-SW['E_ridge_pixels'] = round(C.sigma(p, y[te]), 4)
-print('   sigma = %.4f   (%.0fs)' % (SW['E_ridge_pixels'], time.time() - t0))
+if not SEED_ONLY:
+    # ------------------------------------------------------------ E: linear
+    print('\nE  Ridge on flattened pixels')
+    t0 = time.time()
+    p = make_pipeline(StandardScaler(), Ridge(alpha=10.0)).fit(flat_tr, y[tr]).predict(flat_te)
+    SW['E_ridge_pixels'] = round(C.sigma(p, y[te]), 4)
+    print('   sigma = %.4f   (%.0fs)' % (SW['E_ridge_pixels'], time.time() - t0))
 
-# ------------------------------------------------------------ F: MLP
-print('\nF  MLP on flattened pixels')
-t0 = time.time()
-p = make_pipeline(StandardScaler(),
-                  MLPRegressor(hidden_layer_sizes=(256, 128), max_iter=90,
-                               early_stopping=True, random_state=42)
-                  ).fit(flat_tr, y[tr]).predict(flat_te)
-SW['F_mlp_pixels'] = round(C.sigma(p, y[te]), 4)
-print('   sigma = %.4f   (%.0fs)' % (SW['F_mlp_pixels'], time.time() - t0))
+    # ------------------------------------------------------------ F: MLP
+    print('\nF  MLP on flattened pixels')
+    t0 = time.time()
+    p = make_pipeline(StandardScaler(),
+                      MLPRegressor(hidden_layer_sizes=(256, 128), max_iter=90,
+                                   early_stopping=True, random_state=42)
+                      ).fit(flat_tr, y[tr]).predict(flat_te)
+    SW['F_mlp_pixels'] = round(C.sigma(p, y[te]), 4)
+    print('   sigma = %.4f   (%.0fs)' % (SW['F_mlp_pixels'], time.time() - t0))
 
 
 # ------------------------------------------------------------ G: ViT
@@ -183,6 +187,12 @@ p = predict_batched(net, Pte) * ys + ym
 SW['G_vit_patches'] = round(float((p - y[te]).std()), 4)
 SW['G_vit_params'] = int(npar)
 print('   FINAL sigma = %.4f' % SW['G_vit_patches'])
+
+if SEED_ONLY:
+    os.makedirs(os.path.join(HERE, 'seeds'), exist_ok=True)
+    json.dump({'seed': int(SEED_ONLY), 'G_vit_patches': SW['G_vit_patches']},
+              open(os.path.join(HERE, 'seeds', 'sweep_%s.json' % SEED_ONLY), 'w'))
+    raise SystemExit
 
 # ------------------------------------------------------------ verdict
 RD = R['rendering']

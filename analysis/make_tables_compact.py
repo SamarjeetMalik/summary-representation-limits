@@ -1,4 +1,4 @@
-"""Compact table variants for the 4-page ML4PS workshop version.
+"""Compact table variants for a short version.
 
 Same numbers, same source (results.json), tighter footprint. Run after run_all.py,
 run_extra.py and run_eventci.py.

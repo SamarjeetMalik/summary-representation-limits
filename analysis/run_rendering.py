@@ -79,12 +79,19 @@ X9 = C.build_features(d)
 y = d['y']
 r_idx, _ = C.match(d, c)
 test_mask = np.zeros(len(y), bool); test_mask[r_idx] = True
-pool = np.where(~test_mask)[0]
+pool = np.where(C.train_mask(d, test_mask))[0]
 
 NTRAIN = 60000                                   # memory-bounded subsample
 rng = np.random.default_rng(42)
 tr = rng.choice(pool, NTRAIN, replace=False)
 te = r_idx
+# Shower-disjoint cross-fit (run_shower_crossfit.py): RENDER_FOLD=<k> trains on showers outside
+# fold k (evaluation events of other folds included) and predicts the evaluation events inside it.
+FOLD = os.environ.get('RENDER_FOLD')
+if FOLD is not None:
+    fold = C.shower_folds(d)
+    tr = np.random.default_rng(42).choice(np.where(fold != int(FOLD))[0], NTRAIN, replace=False)
+    te = r_idx[fold[r_idx] == int(FOLD)]
 print('  train %d (subsample of %d), test %d' % (len(tr), len(pool), len(te)))
 
 S4 = np.column_stack([d['log_Ne'], d['Age'], d['NKGX'], d['NKGY']])
@@ -123,10 +130,12 @@ def predict_batched(net, X, bs=1024):
     return np.asarray(out, dtype=np.float32)
 
 RES = {}
+TABP = {}
 
 # ----------------------------------------------------------------- tabular
 def tab(name, X, key):
     p = GBR(max_iter=600, learning_rate=.06, random_state=42).fit(X[tr], y[tr]).predict(X[te])
+    TABP[key] = p
     RES[key] = round(C.sigma(p, y[te]), 4)
     print('  %-42s sigma = %.4f' % (name, RES[key]))
 
@@ -199,6 +208,29 @@ def train_cnn(name, key, Xtr, Xte, epochs=28, bs=256, seed=42, record=True):
     del net, opt, sched, Xt, Yt
     gc.collect()
 
+
+if FOLD is not None:
+    train_cnn('B  rendered density only', 'B_rendered', img_tr[:, None], img_te[:, None])
+    train_cnn('C  rendered density + real muon counts', 'C_rendered_muon',
+              np.stack([img_tr, mu_tr], 1), np.stack([img_te, mu_te], 1))
+    os.makedirs(os.path.join(HERE, 'folds'), exist_ok=True)
+    np.savez(os.path.join(HERE, 'folds', 'render_fold%s.npz' % FOLD), idx=te, y=y[te],
+             A_scalars4=TABP['A_scalars4'], D_nine=TABP['D_nine'],
+             B_rendered=PREDS['B_rendered'], C_rendered_muon=PREDS['C_rendered_muon'])
+    raise SystemExit
+
+# Seed study (run_render_seeds.py): RENDER_SEED=<n> trains B and C with that seed only and
+# writes seeds/render_<n>.json; results.json is not touched.
+if os.environ.get('RENDER_SEED'):
+    sd = int(os.environ['RENDER_SEED'])
+    train_cnn('B  rendered density only', 'B_rendered', img_tr[:, None], img_te[:, None], seed=sd)
+    train_cnn('C  rendered density + real muon counts', 'C_rendered_muon',
+              np.stack([img_tr, mu_tr], 1), np.stack([img_te, mu_te], 1), seed=sd)
+    os.makedirs(os.path.join(HERE, 'seeds'), exist_ok=True)
+    json.dump({'seed': sd, 'A_scalars4': RES['A_scalars4'], 'B_rendered': RES['B_rendered'],
+               'C_rendered_muon': RES['C_rendered_muon']},
+              open(os.path.join(HERE, 'seeds', 'render_%d.json' % sd), 'w'))
+    raise SystemExit
 
 print('\nCNNs on rendered images:')
 train_cnn('B  rendered density only', 'B_rendered', img_tr[:, None], img_te[:, None])

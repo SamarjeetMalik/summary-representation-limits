@@ -1,4 +1,4 @@
-"""Three figures for the R/PS 2026 Research Note.
+"""Three figures for the manuscript.
 
 Reads analysis/results.json for Fig 1 and Fig 3; recomputes the (cheap) scalar
 regression for Fig 2, which needs point-level data rather than summaries.

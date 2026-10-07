@@ -1,4 +1,4 @@
-"""Tables and macros for the MLST manuscript (mlst.tex).
+"""Tables and macros for the journal manuscript.
 
 Writes tables/j_*.tex and appends macros to tables/values.tex. Run after the other
 make_tables_* scripts and after run_nkg_baseline, run_bayes, run_probe_calibration and
@@ -567,4 +567,4 @@ M.update({'fracOldIron': '%.1f' % sp['iron']['frac_old'], 'fracOldProton': '%.1f
 existing = open(os.path.join(TAB, 'values.tex'), encoding='utf-8').read()
 open(os.path.join(TAB, 'values.tex'), 'w', encoding='utf-8').write(
     existing + '\n'.join(r'\newcommand{\%s}{%s}' % kv for kv in M.items()) + '\n')
-print('  +%d MLST macros appended to tables/values.tex' % len(M))
+print('  +%d journal macros appended to tables/values.tex' % len(M))

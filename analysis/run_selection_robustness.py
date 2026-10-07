@@ -41,8 +41,8 @@ print('\n  %-9s %-22s %8s %8s %12s' % ('cut', 'training', 'kept', 'sigma', 'bias
 for name, fn in CUTS.items():
     sel = fn(age)
     te = np.where(test & sel)[0]
-    for mode, tr in (('all ages', np.where(~test)[0]),
-                     ('within selection', np.where(~test & sel)[0])):
+    for mode, tr in (('all ages', np.where(C.train_mask(d, test))[0]),
+                     ('within selection', np.where(C.train_mask(d, test) & sel)[0])):
         sig, spread, per = [], [], []
         for s in SEEDS:
             p = GBR(max_iter=600, learning_rate=.06, random_state=s).fit(X[tr], y[tr]).predict(X[te])

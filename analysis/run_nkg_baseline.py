@@ -25,7 +25,7 @@ d = C.load_root(); c = C.load_csv()
 y = d['y']
 r_idx, c_idx = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-train = ~test
+train = C.train_mask(d, test)
 y_te = y[r_idx]
 sec = 1.0 / np.cos(np.radians(d['Theta1']))
 

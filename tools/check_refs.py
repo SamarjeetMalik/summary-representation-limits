@@ -4,12 +4,12 @@ LaTeX only warns about an undefined reference and prints '??' in the PDF, which
 is easy to miss after moving a figure or deleting a table. This fails loudly.
 
 It also fails on a \\bibitem that is never cited, or a cite key with no \\bibitem.
-LaTeX prints an uncited bibitem without complaint: the R/PS submission shipped
+LaTeX prints an uncited bibitem without complaint: an earlier draft shipped
 nine references of which eight were never cited, and a reviewer read that as
 "related work is largely missing".
 
-Usage:  python tools/check_refs.py                  (mlst, the manuscript in play)
-        python tools/check_refs.py rps_short mlst   (named manuscripts)
+Usage:  python tools/check_refs.py                  (manuscript, the manuscript in play)
+        python tools/check_refs.py manuscript   (named manuscripts)
 """
 import glob
 import io
@@ -18,7 +18,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-papers = sys.argv[1:] or ['mlst']   # the manuscript in play; name others explicitly
+papers = sys.argv[1:] or ['manuscript']   # the manuscript in play; name others explicitly
 
 tables = ''
 for f in glob.glob(os.path.join(ROOT, 'tables', '*.tex')):
@@ -40,6 +40,9 @@ for p in papers:
     cited = set(k.strip() for grp in re.findall(r'\\cite[pt]?\*?(?:\[[^]]*\])*\{([^}]+)\}', body)
                 for k in grp.split(','))
     items = set(re.findall(r'\\bibitem(?:\[[^]]*\])?\{([^}]+)\}', body))
+    bib = os.path.join(ROOT, p + '.bib')                        # BibTeX manuscripts keep entries there
+    if os.path.exists(bib):
+        items |= set(re.findall(r'@\w+\{([^,\s]+),', io.open(bib, encoding='utf-8').read()))
     uncited = sorted(items - cited)
     missing = sorted(cited - items)
     bad_any |= bool(broken or uncited or missing)

@@ -1,0 +1,152 @@
+{
+  "EPOS-LHC": {
+    "n_events": 204489,
+    "n_test": 51292,
+    "target_sd": 0.264,
+    "proton_pct": 27.4,
+    "controls": [
+      {
+        "true_sd": 0.1,
+        "est": 0.0991
+      },
+      {
+        "true_sd": 0.15,
+        "est": 0.1493
+      }
+    ],
+    "sigma": {
+      "Ridge": 0.1674,
+      "RandomForest": 0.1525,
+      "GradBoost": 0.1509,
+      "MLP": 0.1527
+    },
+    "nonlin_spread": 0.0018,
+    "floor": 0.1512,
+    "floor_ci": [
+      0.1498,
+      0.1526
+    ],
+    "gb_excess_pct": -0.19,
+    "gb_excess_ci": [
+      -1.12,
+      0.7
+    ],
+    "ladder": [
+      {
+        "rung": "A",
+        "sigma": 0.2053
+      },
+      {
+        "rung": "B",
+        "sigma": 0.1808,
+        "delta": -0.0245,
+        "delta_ci": [
+          -0.02568,
+          -0.02333
+        ]
+      },
+      {
+        "rung": "C",
+        "sigma": 0.1807,
+        "delta": -8e-05,
+        "delta_ci": [
+          -0.00016,
+          -1e-05
+        ]
+      },
+      {
+        "rung": "D",
+        "sigma": 0.1509,
+        "delta": -0.02978,
+        "delta_ci": [
+          -0.03072,
+          -0.0287
+        ]
+      },
+      {
+        "rung": "E",
+        "sigma": 0.1509,
+        "delta": 3e-05,
+        "delta_ci": [
+          -4e-05,
+          9e-05
+        ]
+      }
+    ]
+  },
+  "SIBYLL-2.3d": {
+    "n_events": 208649,
+    "n_test": 52081,
+    "target_sd": 0.266,
+    "proton_pct": 26.8,
+    "controls": [
+      {
+        "true_sd": 0.1,
+        "est": 0.0996
+      },
+      {
+        "true_sd": 0.15,
+        "est": 0.1493
+      }
+    ],
+    "sigma": {
+      "Ridge": 0.1689,
+      "RandomForest": 0.1531,
+      "GradBoost": 0.1517,
+      "MLP": 0.152
+    },
+    "nonlin_spread": 0.0014,
+    "floor": 0.151,
+    "floor_ci": [
+      0.1495,
+      0.1523
+    ],
+    "gb_excess_pct": 0.49,
+    "gb_excess_ci": [
+      -0.49,
+      1.38
+    ],
+    "ladder": [
+      {
+        "rung": "A",
+        "sigma": 0.2082
+      },
+      {
+        "rung": "B",
+        "sigma": 0.1836,
+        "delta": -0.02453,
+        "delta_ci": [
+          -0.0257,
+          -0.02346
+        ]
+      },
+      {
+        "rung": "C",
+        "sigma": 0.1836,
+        "delta": -9e-05,
+        "delta_ci": [
+          -0.00016,
+          -2e-05
+        ]
+      },
+      {
+        "rung": "D",
+        "sigma": 0.1517,
+        "delta": -0.03182,
+        "delta_ci": [
+          -0.03287,
+          -0.03085
+        ]
+      },
+      {
+        "rung": "E",
+        "sigma": 0.1517,
+        "delta": -2e-05,
+        "delta_ci": [
+          -9e-05,
+          6e-05
+        ]
+      }
+    ]
+  }
+}

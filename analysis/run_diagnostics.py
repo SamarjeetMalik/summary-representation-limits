@@ -33,13 +33,13 @@ NJOBS = int(os.environ.get('NJOBS', '8'))
 d = C.load_root(); c = C.load_csv(); y = d['y']; X = C.build_features(d)
 r_idx, c_idx = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-tr_all = np.where(~test)[0]; yt = y[r_idx]; pid = d['PrimaryID'][r_idx]
+tr_all = np.where(C.train_mask(d, test))[0]; yt = y[r_idx]; pid = d['PrimaryID'][r_idx]
 GB = lambda s=42, **kw: GBR(max_iter=600, learning_rate=.06, random_state=s, **kw)
 MLP = lambda: make_pipeline(StandardScaler(), MLPRegressor(hidden_layer_sizes=(64, 64), max_iter=120,
                                                            random_state=42, early_stopping=True))
 
 # ------------------------------------------------------------------ 1. learning curves
-SIZES = [1000, 3000, 10000, 30000, 100000, len(tr_all)]
+SIZES = [n for n in (1000, 3000, 10000, 30000, 100000) if n < len(tr_all)] + [len(tr_all)]
 
 
 def lc(name, n, s):

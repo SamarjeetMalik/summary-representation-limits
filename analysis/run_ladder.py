@@ -31,7 +31,7 @@ NB = int(os.environ.get('NBOOT', '2000'))
 d = C.load_root(); c = C.load_csv(); y = d['y']
 r_idx, _ = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-tr = np.where(~test)[0]; yt = y[r_idx]
+tr = np.where(C.train_mask(d, test))[0]; yt = y[r_idx]
 
 th = d['Theta1']; mu16 = d['MuonsLarge'].astype(float)
 cols = {'phi': [d['log_Ne'], d['Age'], d['NKGX'], d['NKGY']],

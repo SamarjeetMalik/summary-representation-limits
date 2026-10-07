@@ -26,7 +26,7 @@ y = d['y']
 r_idx, c_idx = C.match(d, c)
 
 test = np.zeros(len(y), bool); test[r_idx] = True
-train = ~test
+train = C.train_mask(d, test)
 R['n_root'] = int(len(y))
 R['n_csv'] = int(len(c['true']))
 R['n_matched'] = int(len(r_idx))

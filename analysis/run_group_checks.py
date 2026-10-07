@@ -29,7 +29,7 @@ NJOBS = int(os.environ.get('NJOBS', '8')); NB = 400
 d = C.load_root(); c = C.load_csv(); y = d['y']; X = C.build_features(d)
 r_idx, _ = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-tr_all = np.where(~test)[0]; yt = y[r_idx]; pid = d['PrimaryID'][r_idx]
+tr_all = np.where(C.train_mask(d, test))[0]; yt = y[r_idx]; pid = d['PrimaryID'][r_idx]
 GB = lambda **kw: GBR(max_iter=600, learning_rate=.06, random_state=42, **kw)
 
 # ---------------------------------------------------------------- 1. groupwise coverage
@@ -67,7 +67,7 @@ REG = {'logNe 4.8-5.0': lne < 5.0, 'logNe 5.0-5.2': lne >= 5.0,
 rng = np.random.default_rng(0)
 excess = {}
 for name, mask in REG.items():
-    trm = np.where(mask & ~test)[0]; tem = np.where(mask & test)[0]
+    trm = np.where(mask & C.train_mask(d, test))[0]; tem = np.where(mask & test)[0]
     e = GB().fit(X[trm], y[trm]).predict(X[tem]) - y[tem]
     ids = np.where(mask)[0]; yr = y[ids]
     Z = StandardScaler().fit_transform(X[ids])

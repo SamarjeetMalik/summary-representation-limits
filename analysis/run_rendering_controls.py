@@ -25,7 +25,7 @@ R = json.load(open(OUT))
 d = C.load_root(); c = C.load_csv(); y = d['y']
 r_idx, _ = C.match(d, c)
 test = np.zeros(len(y), bool); test[r_idx] = True
-pool = np.where(~test)[0]
+pool = np.where(C.train_mask(d, test))[0]
 tr = np.random.default_rng(42).choice(pool, R['rendering']['n_train'], replace=False)  # as run_rendering
 
 PHI = np.column_stack([d['log_Ne'], d['Age'], d['NKGX'], d['NKGY']])
