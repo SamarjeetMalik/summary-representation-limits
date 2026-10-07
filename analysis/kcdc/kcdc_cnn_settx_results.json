@@ -1,0 +1,86 @@
+{
+  "encoder": "settx",
+  "n_params": 1240193,
+  "n_events": 409848,
+  "n_train": 307365,
+  "n_test": 102483,
+  "epochs": 12,
+  "gb_nine": 0.1485,
+  "gb_engineered": 0.1438,
+  "cnn": {
+    "image only": {
+      "vs_nine_single": [
+        {
+          "delta": -0.00267,
+          "ci": [
+            -0.00306,
+            -0.00228
+          ]
+        },
+        {
+          "delta": -0.00262,
+          "ci": [
+            -0.00301,
+            -0.00223
+          ]
+        }
+      ],
+      "sigma_seeds": [
+        0.1459,
+        0.1459
+      ],
+      "sigma_ensemble": 0.1457,
+      "vs_nine": {
+        "delta": -0.00278,
+        "ci": [
+          -0.00317,
+          -0.00239
+        ]
+      },
+      "vs_engineered": {
+        "delta": 0.0019,
+        "ci": [
+          0.00162,
+          0.00218
+        ]
+      }
+    },
+    "residual on GB(nine)": {
+      "vs_nine_single": [
+        {
+          "delta": -0.00542,
+          "ci": [
+            -0.00571,
+            -0.00513
+          ]
+        },
+        {
+          "delta": -0.00539,
+          "ci": [
+            -0.00567,
+            -0.00511
+          ]
+        }
+      ],
+      "sigma_seeds": [
+        0.1431,
+        0.1431
+      ],
+      "sigma_ensemble": 0.143,
+      "vs_nine": {
+        "delta": -0.00551,
+        "ci": [
+          -0.00579,
+          -0.00523
+        ]
+      },
+      "vs_engineered": {
+        "delta": -0.00083,
+        "ci": [
+          -0.001,
+          -0.00066
+        ]
+      }
+    }
+  }
+}
