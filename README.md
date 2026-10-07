@@ -11,8 +11,8 @@ Anonymised for review. Every number, table and figure in the manuscript is gener
 ## Data
 
 * GRAPES-3 simulation (`data/feature_24.6_5.0.root`, `data/feature_24.6_4.8.root`) and the
-  archived prediction table (`data/grapes3_ml_results.csv`): released on Zenodo with the
-  collaboration's permission (DOI in the published paper). Place the three files in `data/`;
+  archived prediction table (`data/grapes3_ml_results.csv`): provided in the supplementary
+  material of the submission, with the collaboration's permission. Place the three files in `data/`;
   `run_pipeline.py --check` verifies them against `SHA256SUMS.txt`.
 * KASCADE simulation: public from the KASCADE Cosmic-ray Data Centre, https://kcdc.iap.kit.edu/
   (Simulations > QGSjet-II-04 > KASCADE, "download All"). Unzip into `data/kcdc/` and run
@@ -33,26 +33,28 @@ that writes the block. Tables are typeset by `analysis/make_tables*.py`, figures
 
 | Paper item | Results block | Script |
 |---|---|---|
-| Table 2, known-truth benchmark | `synthetic` | `analysis/run_synthetic.py` |
-| Table 3, estimators (random split) | `estimators`, `diagnostics` | `run_all.py`, `run_diagnostics.py` |
-| Table 3, estimators (shower cross-fit) | `shower_crossfit.estimators` | `run_shower_crossfit.py` |
-| Table 3, floor estimates | `tmlr_checks.floors`, `bayes` | `run_tmlr_checks.py`, `run_bayes.py` |
-| Table 4, information ladder | `ladder`, `shower_crossfit.ladder` | `run_ladder.py`, `run_shower_crossfit.py` |
-| Table 5, rendering experiment | `rendering`, `shower_crossfit.rendering` | `run_rendering.py`, `run_rendering_controls.py` |
-| Network seeds (section 7) | `render_seeds` | `run_render_seeds.py` |
-| Figure 3 and probe table | `probe_calibration`; `kcdc/kcdc_results.json` | `run_probe_calibration.py`, `kcdc/run_kcdc.py` |
+| Known-truth benchmark (table and figure) | `synthetic` | `analysis/run_synthetic.py` |
+| Benchmark with a binary target | `synthetic_cls` | `run_synthetic_cls.py` |
+| Estimators, random split | `estimators`, `diagnostics` | `run_all.py`, `run_diagnostics.py` |
+| Estimators, shower cross-fit | `shower_crossfit.estimators` | `run_shower_crossfit.py` |
+| Floor estimates | `tmlr_checks.floors`, `bayes`, `floor_robust` | `run_tmlr_checks.py`, `run_bayes.py`, `run_floor_robust.py` |
+| Sub-regimes, probe calibration, per-primary (shower cross-fit) | `crossfit_secondary` | `run_crossfit_secondary.py` |
+| Learning curves | `diagnostics`, `cnn_curves` | `run_diagnostics.py`, `run_cnn_curves.py` |
+| Information ladder | `ladder`, `shower_crossfit.ladder` | `run_ladder.py`, `run_shower_crossfit.py` |
+| Rendering experiment | `rendering`, `shower_crossfit.rendering` | `run_rendering.py`, `run_rendering_controls.py` |
+| Architecture sweep | `sweep` | `run_sweep.py` |
+| Network seeds | `render_seeds` | `run_render_seeds.py` |
+| Probe on KASCADE; selection on KASCADE | `kcdc/kcdc_results.json` | `kcdc/run_kcdc.py` |
 | Selection sweep and retraining | `cut_sweep`, `cut_penalty`, `selection_robustness`, `shower_crossfit.selection` | `run_extra.py`, `run_eventci.py`, `run_selection_robustness.py` |
-| Tables 6 and 7, KASCADE | `kcdc/kcdc_floor_results.json`, `kcdc/kcdc_cnn_results.json`, `kcdc/kcdc_floor_sens.json` | `kcdc/run_kcdc_floor.py`, `kcdc/run_kcdc_cnn.py`, `kcdc/run_kcdc_floor_sens.py` |
-| Appendix: floor robustness, sub-regimes, learning curves | `floor_robust`, `regimes`, `diagnostics`, `cnn_curves` | `run_floor_robust.py`, `run_regimes.py`, `run_diagnostics.py`, `run_cnn_curves.py` |
-| Appendix: architecture sweep | `sweep` | `run_sweep.py` |
-| Appendix: coverage with shower-level splits | `cqr_shower` | `run_cqr_shower.py` |
-| Appendix: sub-regimes, probe calibration, per-primary (shower cross-fit) | `crossfit_secondary` | `run_crossfit_secondary.py` |
-| Appendix: larger encoders on KASCADE | `kcdc/kcdc_cnn_resnet_results.json`, `kcdc/kcdc_cnn_settx_results.json` | `ENCODER=resnet` or `settx` with `kcdc/run_kcdc_cnn.py` |
-| Appendix: two further interaction models | `kcdc/kcdc_generators.json` | `kcdc/run_kcdc_generators.py` (EPOS-LHC and SIBYLL-2.3d KASCADE simulations from the same data centre, reduced to the nine features, in `data/kcdc/generators/`) |
-| Appendix: benchmark with a binary target | `synthetic_cls` | `run_synthetic_cls.py` |
-| Appendix: wall-clock cost of the steps | `analysis/timing.json` | `tools/time_stages.py` |
-| Figure 2, audit flow | none (drawn) | `figures/make_figures_review.py` |
-| Appendix: per-primary tables, age mechanism | `species`, `diagnostics`, `group_checks`, `mechanism_width` | `run_extra.py`, `run_diagnostics.py`, `run_group_checks.py`, `run_mechanism.py` |
+| KASCADE plateau, floor, oracle, station features | `kcdc/kcdc_floor_results.json`, `kcdc/kcdc_floor_sens.json` | `kcdc/run_kcdc_floor.py`, `kcdc/run_kcdc_floor_sens.py` |
+| Encoders of the measured KASCADE image | `kcdc/kcdc_cnn_results.json`, `kcdc/kcdc_cnn_resnet_results.json`, `kcdc/kcdc_cnn_settx_results.json` | `kcdc/run_kcdc_cnn.py` (`ENCODER=small`, `resnet` or `settx`) |
+| Two further interaction models | `kcdc/kcdc_generators.json` | `kcdc/run_kcdc_generators.py` (EPOS-LHC and SIBYLL-2.3d KASCADE simulations from the same data centre, reduced to the nine features, in `data/kcdc/generators/`) |
+| Coverage with shower-level splits | `cqr_shower` | `run_cqr_shower.py` |
+| Age mechanism, energy-resolved errors | `mechanism_width`, `diagnostics` | `run_mechanism.py`, `run_diagnostics.py` |
+| Wall-clock cost of the steps | `analysis/timing.json` | `tools/time_stages.py` |
+| Audit-flow figure | none (drawn) | `figures/make_figures_review.py` |
+
+Items are named, not numbered, so the map stays valid if the manuscript's numbering changes.
 
 ## What each added analysis is
 
