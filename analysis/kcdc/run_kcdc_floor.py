@@ -35,7 +35,9 @@ from sklearn.preprocessing import StandardScaler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
-SUF = '_' + GEN if GEN else ''
+LGE = os.environ.get('KCDC_LGE', '')                  # window of true log10(E/GeV); unset = '5-6'
+SUF = ('_' + GEN if GEN else '') + ('_e' + LGE.replace('-', '') if LGE else '')
+LO_, HI_ = (float(v) for v in (LGE or '5-6').split('-'))
 NPZ = os.environ.get('KCDC_STATIONS', os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc',
                                                     'kcdc_station_features%s.npz' % SUF))
 OUT = os.path.join(HERE, 'kcdc_floor_results%s.json' % SUF)
@@ -48,7 +50,7 @@ y_all = D['TrEP'] - 9.0
 ok = np.ones(len(y_all), bool)
 for k in ('Ne', 'Nmu', 'Age', 'Xc', 'Yc', 'TrNe', 'TrNm'):
     ok &= np.isfinite(D[k])
-ok &= (D['Ne'] > 1) & (D['Nmu'] > 0) & (D['TrNe'] > 1) & (D['TrNm'] > 0) & (y_all >= 5) & (y_all <= 6)
+ok &= (D['Ne'] > 1) & (D['Nmu'] > 0) & (D['TrNe'] > 1) & (D['TrNm'] > 0) & (y_all >= LO_) & (y_all <= HI_)
 ids = np.where(ok)[0]
 y = y_all[ids]; n = len(ids)
 _, shower = np.unique(np.column_stack([D['TrEP'][ids], D['TrPP'][ids].astype(np.float32)]), axis=0, return_inverse=True)

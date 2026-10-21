@@ -165,10 +165,22 @@ def compute():
                 if (g or dec) and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', src)):
                     run_env(os.path.join('kcdc', 'run_kcdc_floor_sens.py'), ANA, {'KCDC_GEN': g, 'KCDC_DECADE': dec},
                             'run_kcdc_floor_sens %s %s (~3 min)' % (tag, dec or 'stations'))
+            for lge in ('6-7',):                            # station-level audit one decade higher
+                wf = 'kcdc_station_features%s_e%s.npz' % ('_' + g if g else '', lge.replace('-', ''))
+                if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', wf)):
+                    run_env(os.path.join('kcdc', 'run_kcdc_floor.py'), ANA, {'KCDC_GEN': g, 'KCDC_LGE': lge},
+                            'run_kcdc_floor %s %s (~10 min)' % (tag, lge))
+                    run_env(os.path.join('kcdc', 'run_kcdc_cnn.py'), ANA, {'KCDC_GEN': g, 'KCDC_LGE': lge},
+                            'run_kcdc_cnn %s %s (~10 min on one GPU)' % (tag, lge))
             if g and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_dense_%s.npz' % g)):
                 run_env(os.path.join('kcdc', 'run_kcdc_cnn.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_cnn %s (~10 min on one GPU)' % g)
         if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_measured.npz')):
             run(os.path.join('kcdc', 'run_kcdc_measured.py'), ANA, 'run_kcdc_measured (~7 min)')
+            run(os.path.join('kcdc', 'check_measured_threshold.py'), ANA, 'check_measured_threshold (~1 min)')
+        if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_epos.npz')):
+            run_env(os.path.join('kcdc', 'run_kcdc_measured.py'), ANA, {'MEASURED_TEST': 'epos'},
+                    'run_kcdc_measured closure test (~17 min)')
+        run(os.path.join('kcdc', 'check_station_samples.py'), ANA, 'check_station_samples (~1 min)')
     else:
         print('  KCDC npz absent: skipping the KCDC arm (see analysis/kcdc/convert_kcdc.py)')
 

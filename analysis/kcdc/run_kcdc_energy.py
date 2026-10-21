@@ -53,7 +53,8 @@ for lo in (14, 15, 16, 17):
 
     sig = {k: float((mk().fit(X9[tr], y[tr]).predict(X9[te]) - yt).std()) for k, mk in MODELS.items()}
     e_gb = GB().fit(X9[tr], y[tr]).predict(X9[te]) - yt
-    oracle = float((GB().fit(XO[tr], y[tr]).predict(XO[te]) - yt).std())
+    e_or = GB().fit(XO[tr], y[tr]).predict(XO[te]) - yt
+    oracle = float(e_or.std())
     rung = lambda cols: float((GB().fit(X9[tr][:, cols], y[tr]).predict(X9[te][:, cols]) - yt).std())
     fit4, plus_zen = rung([0, 3, 6, 7]), rung([0, 3, 6, 7, 4, 5])
     plus_mu = rung([0, 3, 6, 7, 4, 5, 8, 1])
@@ -79,7 +80,24 @@ for lo in (14, 15, 16, 17):
     for _ in range(NB):
         r = np.concatenate([o_[st[i]:st[i + 1]] for i in rng.integers(0, len(ug), len(ug))])
         bx.append(100 * (eg[r].std() / fl(g2, r) - 1))
+    # KCDC's own energy estimate E (a fixed function of Ne, Nmu and zenith, log10 eV) on the same test
+    # events: raw, and calibrated by boosting on E alone. Bias by primary for boosting, KCDC and oracle.
+    # Nothing here draws from rng, so every other number of this script is unchanged by it.
+    ek = c('E') - 9.0
+    r_k = ek[te] - yt
+    e_kcal = GB().fit(ek[tr, None], y[tr]).predict(ek[te, None]) - yt
+    pp = D['TrPP'][ids][te]
+
+    def by_primary(e):
+        mb = {int(p): round(float(e[pp == p].mean()), 4) for p in np.unique(pp)}
+        return {'mean_bias': mb, 'spread': round(max(mb.values()) - min(mb.values()), 4),
+                'sigma': {int(p): round(float(e[pp == p].std()), 4) for p in np.unique(pp)}}
+    kcdc = {'raw_rms': round(float(np.sqrt(np.mean(r_k ** 2))), 4), 'raw_sd': round(float(r_k.std()), 4),
+            'raw_mean_bias': round(float(r_k.mean()), 4), 'calibrated_sigma': round(float(e_kcal.std()), 4),
+            'by_primary_raw': by_primary(r_k - r_k.mean()), 'by_primary_calibrated': by_primary(e_kcal)}
+    prim = {'GradBoost': by_primary(e_gb), 'oracle': by_primary(e_or)}
     out['%d-%d' % (lo, lo + 1)] = {
+        'kcdc_estimate': kcdc, 'by_primary': prim,
         'n_events': int(len(ids)), 'n_test': int(len(te)), 'target_sd': round(float(y.std()), 3),
         'sigma': {k: round(v, 4) for k, v in sig.items()}, 'floor': round(floor, 4), 'floor_control_0.10': round(ctrl, 4),
         'gb_excess_pct': round(100 * (float(eg.std()) / floor - 1), 2),

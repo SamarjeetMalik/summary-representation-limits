@@ -1,0 +1,22 @@
+{
+  "window_log10E_rec": [
+    14.0,
+    14.2
+  ],
+  "data_frac_below_3.5": 0.0015,
+  "data_n": 2638218,
+  "models": {
+    "QGSJET-II-04": {
+      "proton": 0.403,
+      "iron": 0.739
+    },
+    "EPOS-LHC": {
+      "proton": 0.399,
+      "iron": 0.72
+    },
+    "SIBYLL-2.3d": {
+      "proton": 0.383,
+      "iron": 0.708
+    }
+  }
+}

@@ -31,7 +31,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOTDIR = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
 GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
 SRCDIR = os.path.join(ROOTDIR, GEN) if GEN else ROOTDIR
-SUF = '_' + GEN if GEN else ''
+# KCDC_LGE='6-7' selects a window of true log10(E/GeV): all events in it are found from the truth tree,
+# at most NWIN of them are drawn uniformly at random, and only the file regions holding them are read.
+# Unset: the default sample of NCHUNK evenly spaced blocks of CHUNK events over the whole file.
+LGE = os.environ.get('KCDC_LGE', '')
+NWIN = int(os.environ.get('NWIN', '400000'))
+SUF = ('_' + GEN if GEN else '') + ('_e' + LGE.replace('-', '') if LGE else '')
 OUT = os.path.join(ROOTDIR, 'kcdc_station_features%s.npz' % SUF)
 OUT_DENSE = os.path.join(ROOTDIR, 'kcdc_station_dense%s.npz' % SUF)
 NCHUNK, CH = int(os.environ.get('NCHUNK', '2400')), int(os.environ.get('CHUNK', '200'))
@@ -45,6 +50,17 @@ for r in csv.DictReader(open(os.path.join(HERE, 'kascade_station_coordinates.csv
 f = uproot.open(sorted(glob.glob(os.path.join(SRCDIR, '*.root')))[0])
 N = f['array'].num_entries
 offs = np.linspace(0, N - CH, NCHUNK).astype(int)
+KEEP = None                                     # per-block row masks in window mode
+if LGE:
+    lo_, hi_ = (float(v) + 9 for v in LGE.split('-'))
+    tre = f['trmc']['TrEP'].array(library='np')
+    pool = np.where((tre >= lo_) & (tre < hi_))[0]
+    pick = np.sort(np.random.default_rng(3).choice(pool, min(NWIN, len(pool)), replace=False))
+    CH = 20000
+    starts = np.unique(pick // CH) * CH
+    offs = starts
+    KEEP = {int(o): pick[(pick >= o) & (pick < o + CH)] - o for o in starts}
+    print('window %s: %d events in file, %d drawn, %d blocks of %d to read' % (LGE, len(pool), len(pick), len(offs), CH), flush=True)
 
 
 def annuli(dep, sid, ev, n, xc, yc, edges):
@@ -57,10 +73,13 @@ def annuli(dep, sid, ev, n, xc, yc, edges):
 
 parts = []
 for k, o in enumerate(offs):
-    sl = dict(entry_start=int(o), entry_stop=int(o) + CH)
+    sl = dict(entry_start=int(o), entry_stop=min(int(o) + CH, N))
     g = f['general'].arrays(['Run', 'Ev', 'EDeposit', 'EDepositS', 'MDeposit', 'MDepositS', 'Arrival', 'ArrivalS'], **sl)
     a = f['array'].arrays(['Ne', 'Nmu', 'Age', 'Ze', 'Xc', 'Yc'], library='np', **sl)
     t = f['trmc'].arrays(['TrEP', 'TrPP', 'TrNe', 'TrNm'], library='np', **sl)
+    if KEEP is not None:
+        kk = KEEP[int(o)]
+        g = g[kk]; a = {k: v[kk] for k, v in a.items()}; t = {k: v[kk] for k, v in t.items()}
     n = len(a['Ne']); xc, yc = a['Xc'].astype(float), a['Yc'].astype(float)
     feats = {}
     for name, dkey, skey, edges in (('e', 'EDeposit', 'EDepositS', E_EDGES), ('mu', 'MDeposit', 'MDepositS', M_EDGES)):
@@ -83,8 +102,8 @@ for k, o in enumerate(offs):
         dense = np.zeros((n, 252), np.float32); dense[ev, sid - 1] = v
         rec[name] = dense.astype(np.float16)
     parts.append(rec)
-    if (k + 1) % 200 == 0:
-        print('  block %4d/%d at %d' % (k + 1, NCHUNK, o), flush=True)
+    if (k + 1) % (200 if KEEP is None else 20) == 0:
+        print('  block %4d/%d at %d' % (k + 1, len(offs), o), flush=True)
 
 D = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
 dense = {k: D.pop(k) for k in ('dense_e', 'dense_mu', 'dense_t')}

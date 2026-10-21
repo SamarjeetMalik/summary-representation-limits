@@ -43,7 +43,9 @@ DATA = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
 # own results file so the main experiment is never overwritten.
 ENCODER = os.environ.get('ENCODER', 'small')
 GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
-SUF = '_' + GEN if GEN else ''
+LGE = os.environ.get('KCDC_LGE', '')                  # window of true log10(E/GeV); unset = '5-6'
+SUF = ('_' + GEN if GEN else '') + ('_e' + LGE.replace('-', '') if LGE else '')
+LO_, HI_ = (float(v) for v in (LGE or '5-6').split('-'))
 OUT = os.path.join(HERE, ('kcdc_cnn_results%s.json' % SUF) if ENCODER == 'small' else 'kcdc_cnn_%s_results%s.json' % (ENCODER, SUF))
 DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 EPOCHS, BS, NB = int(os.environ.get('EPOCHS', '20')), 512, 1000
@@ -60,7 +62,7 @@ y_all = F['TrEP'] - 9.0
 ok = np.ones(len(y_all), bool)
 for k in ('Ne', 'Nmu', 'Age', 'Xc', 'Yc', 'TrNe', 'TrNm'):
     ok &= np.isfinite(F[k])
-ok &= (F['Ne'] > 1) & (F['Nmu'] > 0) & (F['TrNe'] > 1) & (F['TrNm'] > 0) & (y_all >= 5) & (y_all <= 6)
+ok &= (F['Ne'] > 1) & (F['Nmu'] > 0) & (F['TrNe'] > 1) & (F['TrNm'] > 0) & (y_all >= LO_) & (y_all <= HI_)
 ids = np.where(ok)[0]; y = y_all[ids].astype(np.float32)
 _, shower = np.unique(np.column_stack([F['TrEP'][ids], F['TrPP'][ids].astype(np.float32)]), axis=0, return_inverse=True)
 shower = shower.ravel()
@@ -159,7 +161,63 @@ class SetTx(nn.Module):
         return self.h(torch.cat([h, z], 1) if self.use_nine else h).squeeze(-1)
 
 
-NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx}
+# ---- station geometry for the graph network: positions (m) and 8 nearest neighbours of each station
+POS = np.zeros((252, 2), np.float32)
+for r in csv.DictReader(open(os.path.join(HERE, 'kascade_station_coordinates.csv'))):
+    POS[int(r['station_id']) - 1] = [float(r['x_m']), float(r['y_m'])]
+_d = np.hypot(POS[:, None, 0] - POS[None, :, 0], POS[:, None, 1] - POS[None, :, 1])
+NBR = np.argsort(_d, 1)[:, 1:9]                       # (252, 8), self excluded
+SC_MU, SC_SD = NINE[tr].mean(0).astype(np.float32), NINE[tr].std(0).astype(np.float32)
+
+
+class EdgeLayer(nn.Module):
+    """One round of messages: m_ij = MLP(h_i, h_j - h_i, x_j - x_i), mean over the 8 neighbours."""
+    def __init__(self, dim):
+        super().__init__()
+        self.msg = nn.Sequential(nn.Linear(2 * dim + 2, dim), nn.ReLU(), nn.Linear(dim, dim))
+        self.upd = nn.Sequential(nn.Linear(2 * dim, dim), nn.ReLU(), nn.Linear(dim, dim))
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, h, nbr, rel):
+        hj = h[:, nbr]                                   # (B, 252, 8, dim)
+        hi = h.unsqueeze(2).expand_as(hj)
+        m = self.msg(torch.cat([hi, hj - hi, rel.expand(len(h), -1, -1, -1)], -1)).mean(2)
+        return self.norm(h + self.upd(torch.cat([h, m], -1)))
+
+
+class GNN(nn.Module):
+    """A graph network over the 252 stations. Node input: e/gamma and muon deposit, arrival time, hit
+    flag, and the station position relative to the reconstructed core (dx, dy, r, all in units of
+    100 m). Four rounds of messages between 8 nearest neighbours, then attention pooling."""
+    def __init__(self, use_nine, dim=128, depth=4):
+        super().__init__()
+        self.use_nine = use_nine
+        self.register_buffer('rc', torch.from_numpy(RC))
+        self.register_buffer('pos', torch.from_numpy(POS / 100.0))
+        self.register_buffer('nbr', torch.from_numpy(NBR))
+        rel = (POS[NBR] - POS[:, None, :]) / 100.0
+        self.register_buffer('rel', torch.from_numpy(rel.astype(np.float32)).unsqueeze(0))
+        self.register_buffer('mu', torch.from_numpy(SC_MU)); self.register_buffer('sd', torch.from_numpy(SC_SD))
+        self.emb = nn.Sequential(nn.Linear(7, dim), nn.ReLU(), nn.Linear(dim, dim))
+        self.layers = nn.ModuleList([EdgeLayer(dim) for _ in range(depth)])
+        self.att = nn.Linear(dim, 1)
+        self.h = nn.Sequential(nn.Linear(2 * dim + (9 if use_nine else 0), 128), nn.ReLU(), nn.Linear(128, 1))
+        if use_nine:
+            nn.init.zeros_(self.h[-1].weight); nn.init.zeros_(self.h[-1].bias)
+
+    def forward(self, x, z):
+        s = x[:, :, self.rc[:, 0], self.rc[:, 1]].transpose(1, 2)          # (B, 252, 4) station signals
+        core = (z[:, 6:8] * self.sd[6:8] + self.mu[6:8]) / 100.0          # reconstructed core, 100 m
+        d = self.pos.unsqueeze(0) - core.unsqueeze(1)                      # (B, 252, 2)
+        h = self.emb(torch.cat([s, d, d.norm(dim=-1, keepdim=True)], -1))
+        for L in self.layers:
+            h = L(h, self.nbr, self.rel)
+        w = torch.softmax(self.att(h), 1)
+        g = torch.cat([(w * h).sum(1), h.mean(1)], -1)
+        return self.h(torch.cat([g, z], 1) if self.use_nine else g).squeeze(-1)
+
+
+NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx, 'gnn': GNN}
 # The residual network was first trained with the CNN's recipe (AdamW 1e-3, cosine, no warm-up).
 # It did not generalise: image-only 0.153-0.156 at the final epoch, worse than the small CNN, and
 # the zero-initialised correction never left zero. A second attempt at 3e-4 with warm-up and
@@ -167,7 +225,7 @@ NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx}
 # (kcdc_cnn_resnet_lr1e-3.log, enc_resnet_v2.log). The larger encoders are therefore trained with
 # early stopping on a validation set: a tenth of the TRAINING showers is held out, the weights
 # with the best validation error are kept, and the test set plays no part in the choice.
-LR = float(os.environ.get('LR', {'small': 1e-3, 'resnet': 3e-4, 'settx': 5e-4}[ENCODER]))
+LR = float(os.environ.get('LR', {'small': 1e-3, 'resnet': 3e-4, 'settx': 5e-4, 'gnn': 5e-4}[ENCODER]))
 WARMUP = ENCODER == 'resnet'
 EARLY = ENCODER != 'small'
 

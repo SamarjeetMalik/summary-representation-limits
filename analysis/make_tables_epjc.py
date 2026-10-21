@@ -133,30 +133,40 @@ $\lg(E/\mathrm{eV})$ & model & fit & + zenith & + muon size \\
 
 # ------------------------------------------------------------- per-station results, three models
 rows = []
-for g, s, t in GENS:
-    F = load('kcdc_floor_results%s.json' % s); C = load('kcdc_cnn_results%s.json' % s)
-    o = F['oracle']; s9, so = o['sigma_nine'], o['sigma_true_sizes']
-    inter = F['intermediate']
-    mu, allst = inter['radial muon profile'], inter['profiles + counts, totals, timing']
-    eg = inter['radial e/gamma profile']
-    cnn = C['cnn']['residual on GB(nine)']['sigma_ensemble']
-    img = C['cnn']['image only']['sigma_ensemble']
-    rows.append(r'%s & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%.1f\%%$ & $%.1f\%%$ \\' % (
-        g, num(F['n_test']), f4(F['plateau']['GradBoost']), f4(F['floor']['nine']), f4(so),
-        f4(allst['sigma']), f4(cnn), vshare(s9, so, C['gb_engineered']), vshare(s9, so, cnn)))
-    M.update({'ep%sStGB' % t: f4(F['plateau']['GradBoost']), 'ep%sStFloor' % t: f4(F['floor']['nine']),
-              'ep%sStOracle' % t: f4(so), 'ep%sStAll' % t: f4(allst['sigma']), 'ep%sStCnn' % t: f4(cnn),
-              'ep%sStImg' % t: f4(img),
-              'ep%sStMuPct' % t: '%.1f' % mu['gap_recovered_pct'], 'ep%sStEgPct' % t: '%.1f' % eg['gap_recovered_pct'],
-              'ep%sStAllPct' % t: '%.1f' % allst['gap_recovered_pct'],
-              'ep%sStEngVar' % t: '%.1f' % vshare(s9, so, C['gb_engineered']),
-              'ep%sStCnnVar' % t: '%.1f' % vshare(s9, so, cnn),
-              'ep%sStCnnOverEng' % t: f4(-C['cnn']['residual on GB(nine)']['vs_engineered']['delta'])})
+WIN = [('', '', r'$5$--$6$'), ('_e67', 'Hi', r'$6$--$7$')]       # windows of true log10(E/GeV)
+for wsuf, wkey, wlab in WIN:
+    if not all(os.path.exists(os.path.join(K, n % (s_ + wsuf))) for _, s_, _ in GENS
+               for n in ('kcdc_floor_results%s.json', 'kcdc_cnn_results%s.json')):
+        continue
+    first = True
+    for g, s0, t0 in GENS:
+        s, t = s0 + wsuf, t0 + wkey
+        F = load('kcdc_floor_results%s.json' % s); C = load('kcdc_cnn_results%s.json' % s)
+        o = F['oracle']; s9, so = o['sigma_nine'], o['sigma_true_sizes']
+        inter = F['intermediate']
+        mu, allst = inter['radial muon profile'], inter['profiles + counts, totals, timing']
+        eg = inter['radial e/gamma profile']
+        cnn = C['cnn']['residual on GB(nine)']['sigma_ensemble']
+        img = C['cnn']['image only']['sigma_ensemble']
+        rows.append(r'%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%.1f\%%$ & $%.1f\%%$ \\' % (
+            wlab if first else '', g, num(F['n_test']), f4(F['plateau']['GradBoost']), f4(F['floor']['nine']), f4(so),
+            f4(allst['sigma']), f4(cnn), vshare(s9, so, C['gb_engineered']), vshare(s9, so, cnn)))
+        M.update({'ep%sStGB' % t: f4(F['plateau']['GradBoost']), 'ep%sStFloor' % t: f4(F['floor']['nine']),
+                  'ep%sStOracle' % t: f4(so), 'ep%sStAll' % t: f4(allst['sigma']), 'ep%sStCnn' % t: f4(cnn),
+                  'ep%sStImg' % t: f4(img),
+                  'ep%sStMuPct' % t: '%.1f' % mu['gap_recovered_pct'], 'ep%sStEgPct' % t: '%.1f' % eg['gap_recovered_pct'],
+                  'ep%sStAllPct' % t: '%.1f' % allst['gap_recovered_pct'],
+                  'ep%sStEngVar' % t: '%.1f' % vshare(s9, so, C['gb_engineered']),
+                  'ep%sStCnnVar' % t: '%.1f' % vshare(s9, so, cnn),
+                  'ep%sStCnnOverEng' % t: f4(-C['cnn']['residual on GB(nine)']['vs_engineered']['delta'])})
+        first = False
+    rows.append(r'\midrule')
+rows = rows[:-1]
 write('e_stations.tex', r'''\begin{table*}[tb]
 \centering\small
 \caption{What the measured station signals add, on three hadronic-interaction models
-($\lg(E/\mathrm{GeV})\in[5,6]$; uniform sample of $2{,}400$ blocks of $200$ events from each
-release; split by shower). Boosting and floor estimate on the nine reconstructed features; the
+(for $\lg(E/\mathrm{GeV})\in[5,6]$ a uniform sample of $2{,}400$ blocks of $200$ events from each
+release, for $[6,7]$ up to $400{,}000$ events drawn at random from that window; split by shower). Boosting and floor estimate on the nine reconstructed features; the
 oracle with true sizes; boosting on the nine features plus all station features (radial
 e/$\gamma$ and muon profiles, hit counts, totals and timing spread); and a convolutional network on
 the measured station image, trained as a correction to boosting (ensemble of three seeds). The last
@@ -164,10 +174,10 @@ two columns give the share of the variance gap to the oracle closed by the stati
 by the network}
 \label{tab:stations}
 \footnotesize\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrccccccc}
+\begin{tabular}{llrccccccc}
 \toprule
- & & & floor & & + station & + image & \multicolumn{2}{c}{variance gap closed} \\
-model & test events & boosting & estimate & oracle & features & network & features & network \\
+ & & & & floor & & + station & + image & \multicolumn{2}{c}{variance gap closed} \\
+$\lg(E/\mathrm{GeV})$ & model & test events & boosting & estimate & oracle & features & network & features & network \\
 \midrule
 %s
 \bottomrule
@@ -182,8 +192,72 @@ M['epRatioResolved'] = str(sum(1 for g in lad if lad[g]['E']['delta_ci'][1] < 0 
 SC = load('kcdc_sample_check.json')
 M['epSampleFracDiffMax'] = '%.4f' % max(v['max_primary_fraction_diff'] for v in SC.values())
 M['epSampleMedDiffMax'] = '%.4f' % max(abs(v['median_lgE_diff']) for v in SC.values())
+for wkey in ('', 'Hi'):                               # ranges over the three models, per window
+    for q in ('CnnVar', 'EngVar', 'MuPct', 'EgPct'):
+        v = [float(M['ep%s%sSt%s' % (t, wkey, q)]) for _, _, t in GENS if 'ep%s%sSt%s' % (t, wkey, q) in M]
+        if v:
+            M['epSt%s%sMin' % (q, wkey)] = '%.1f' % min(v); M['epSt%s%sMax' % (q, wkey)] = '%.1f' % max(v)
 cv = [float(M['ep%sStCnnVar' % t]) for _, _, t in GENS]
 M.update({'epCnnVarMin': '%.0f' % min(cv), 'epCnnVarMax': '%.0f' % max(cv)})
+
+# ------------------------------------------------------------- graph network on two interaction models
+for g, s_, t in GENS:
+    fp = os.path.join(K, 'kcdc_cnn_gnn_results%s.json' % s_)
+    if os.path.exists(fp):
+        G_ = json.load(open(fp)); F_ = load('kcdc_floor_results%s.json' % s_)
+        s9_, so_ = F_['oracle']['sigma_nine'], F_['oracle']['sigma_true_sizes']
+        M['ep%sGnnImg' % t] = f4(G_['cnn']['image only']['sigma_ensemble'])
+        M['ep%sGnnRes' % t] = f4(G_['cnn']['residual on GB(nine)']['sigma_ensemble'])
+        M['ep%sGnnVar' % t] = '%.1f' % vshare(s9_, so_, G_['cnn']['residual on GB(nine)']['sigma_ensemble'])
+        M['ep%sGnnOverEng' % t] = f4(-G_['cnn']['residual on GB(nine)']['vs_engineered']['delta'])
+nv = [float(M['ep%sStCnnVar' % t]) for _, _, t in GENS] + [float(M[k]) for k in M if k.endswith('GnnVar') and k.startswith('ep')]
+M['epNetVarMin'] = '%.0f' % min(nv); M['epNetVarMax'] = '%.0f' % max(nv)
+
+# ------------------------------------------------------------- KCDC's own estimate, and bias by primary
+rows, kx, sp = [], [], {'gb': [], 'kc': [], 'or': []}
+for d in DEC[:3]:
+    first = True
+    for g, _, t in GENS:
+        r = EN[g][d]; k = r['kcdc_estimate']; b = r['by_primary']
+        ex = 100 * (k['calibrated_sigma'] / r['floor'] - 1); kx.append((d, ex))
+        sp['gb'].append((d, b['GradBoost']['spread'])); sp['kc'].append((d, k['by_primary_calibrated']['spread'])); sp['or'].append((d, b['oracle']['spread']))
+        rows.append(r'%s & %s & $%s$ & $%s$ & $%s$ ($%+.3f$) & $%s$ & $%+.0f\%%$ & $%.3f$ & $%.3f$ & $%.3f$ \\' % (
+            (r'$%s$--$%d$' % (DECLAB[d], int(DECLAB[d]) + 1)) if first else '', g, f4(r['sigma']['GradBoost']), f4(r['floor']),
+            f4(k['raw_rms']), k['raw_mean_bias'], f4(k['calibrated_sigma']), ex,
+            b['GradBoost']['spread'], k['by_primary_calibrated']['spread'], b['oracle']['spread']))
+        first = False
+    rows.append(r'\midrule')
+write('e_kcdcest.tex', r"""\begin{table*}[tb]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\caption{KASCADE's own energy estimate $E_{\rm rec}$ (a fixed function of $\log_{10}\Ne$, $\log_{10}N_\mu$ and
+zenith angle) against gradient boosting on the nine features and the floor estimate, on the same
+test events. Raw: root-mean-square error of $\lg E_{\rm rec}$ with its mean bias; calibrated: boosting
+on $E_{\rm rec}$ alone, which removes bias and nonlinearity. The last three columns give the spread
+(largest minus smallest) of the mean bias across the five primaries for boosting, for the calibrated
+KCDC estimate and for the oracle with true sizes}
+\label{tab:kcdcest}
+\begin{tabular}{llccccccccc}
+\toprule
+ & & & & \multicolumn{3}{c}{KCDC estimate} & \multicolumn{3}{c}{bias spread across primaries} \\
+$\lg(E/\mathrm{eV})$ & model & boosting & floor est. & raw (bias) & calibrated & above floor & boosting & KCDC & oracle \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table*}
+""" % '\n'.join(rows[:-1]))
+for d, key in (('14-15', 'One'), ('15-16', 'Two'), ('16-17', 'Three')):
+    v = [e for dd, e in kx if dd == d]
+    M['epKcdcEx%sMin' % key] = '%.0f' % min(v); M['epKcdcEx%sMax' % key] = '%.0f' % max(v)
+    for nm, lst in sp.items():
+        w = [e for dd, e in lst if dd == d]
+        M['epSpread%s%sMin' % (nm.capitalize(), key)] = '%.3f' % min(w); M['epSpread%s%sMax' % (nm.capitalize(), key)] = '%.3f' % max(w)
+bias = [EN[g][d]['kcdc_estimate']['raw_mean_bias'] for g, _, _ in GENS for d in DEC[:3]]
+M['epKcdcBiasMin'] = '%+.3f' % min(bias); M['epKcdcBiasMax'] = '%+.3f' % max(bias)
+TH = load('kcdc_measured_threshold.json')
+M['epThrData'] = '%.2f' % (100 * TH['data_frac_below_3.5'])
+M['epThrProtonMin'] = '%.0f' % (100 * min(v['proton'] for v in TH['models'].values()))
+M['epThrProtonMax'] = '%.0f' % (100 * max(v['proton'] for v in TH['models'].values()))
 
 # ------------------------------------------------------------- sensitivity of the floor estimate
 SAMP = [('st', '', r'$5$--$6$ (stations)'), ('14-15', '_d14-15', r'$14$--$15$'), ('15-16', '_d15-16', r'$15$--$16$'),
