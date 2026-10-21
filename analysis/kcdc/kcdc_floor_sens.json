@@ -30,6 +30,16 @@
         "true_sd": 0.15,
         "est": 0.1511
       }
+    ],
+    "zscore-L1": [
+      {
+        "true_sd": 0.1,
+        "est": 0.0996
+      },
+      {
+        "true_sd": 0.15,
+        "est": 0.1501
+      }
     ]
   },
   "gamma": {
@@ -50,22 +60,35 @@
       "10": 0.1476,
       "20": 0.1486,
       "50": 0.1489
+    },
+    "zscore-L1": {
+      "5": 0.1485,
+      "10": 0.148,
+      "20": 0.1482,
+      "50": 0.1484
     }
   },
   "six_coordinates": 0.1478,
+  "sample": "5-6 (lgE/GeV), station-level",
+  "generator": "qgs4",
+  "n_events": 409848,
   "gb_sigma": 0.1485,
   "floor_test": 0.1477,
   "floor_test_ci_shower": [
-    0.1468,
-    0.1486
+    0.1467,
+    0.1485
   ],
   "gb_excess_pct": 0.57,
   "gb_excess_ci_shower": [
-    -0.04,
-    1.17
+    0.0,
+    1.25
   ],
   "range": [
     0.1466,
     0.1489
+  ],
+  "gb_excess_range_pct": [
+    -0.25,
+    1.31
   ]
 }

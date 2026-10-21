@@ -1,0 +1,17 @@
+{
+  "qgs4": {
+    "n_sample": 480000,
+    "max_primary_fraction_diff": 0.0001,
+    "median_lgE_diff": 0.0023
+  },
+  "epos": {
+    "n_sample": 480000,
+    "max_primary_fraction_diff": 0.0002,
+    "median_lgE_diff": -0.0
+  },
+  "sibyll": {
+    "n_sample": 480000,
+    "max_primary_fraction_diff": 0.0003,
+    "median_lgE_diff": -0.0007
+  }
+}

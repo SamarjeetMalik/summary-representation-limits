@@ -16,12 +16,15 @@ import numpy as np
 import uproot
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DIR = os.path.join(ROOT, 'data', 'kcdc')
-OUT = os.path.join(DIR, 'kcdc_kascade_qgs4.npz')
-ARRAY = ['Ne', 'Nmu', 'Age', 'Ze', 'Az', 'Xc', 'Yc']
+# KCDC_GEN selects the interaction model: unset = QGSJET-II-04 (data/kcdc/*.root, the original);
+# 'epos' or 'sibyll' = data/kcdc/<gen>/*.root, written to kcdc_kascade_<gen>.npz.
+GEN = os.environ.get('KCDC_GEN', '')
+DIR = os.path.join(ROOT, 'data', 'kcdc', GEN) if GEN else os.path.join(ROOT, 'data', 'kcdc')
+OUT = os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_%s.npz' % (GEN or 'qgs4'))
+ARRAY = ['Ne', 'Nmu', 'Age', 'Ze', 'Az', 'Xc', 'Yc', 'E']        # E: KCDC's reconstructed log10(E/eV)
 TRMC = ['TrEP', 'TrPP', 'TrNe', 'TrNm']
 
-files = sorted(glob.glob(os.path.join(DIR, '**', '*.root'), recursive=True))
+files = sorted(glob.glob(os.path.join(DIR, '*.root')))
 if not files:
     sys.exit('no .root files under %s' % DIR)
 

@@ -7,7 +7,8 @@ coordinates, and with a shower-level bootstrap taken jointly with gradient boost
 
 CONTROL FIRST: each scaling must recover a known noise level on the real feature matrix.
 
-Writes analysis/kcdc/kcdc_floor_sens.json.  Run:  python analysis/kcdc/run_kcdc_floor_sens.py
+Also a Manhattan-metric variant. Writes analysis/kcdc/kcdc_floor_sens[_gen][_dDEC].json.
+Run:  [KCDC_GEN=epos] [KCDC_DECADE=15-16] python analysis/kcdc/run_kcdc_floor_sens.py
 """
 import json, os, warnings
 import numpy as np
@@ -18,8 +19,18 @@ from sklearn.preprocessing import QuantileTransformer, RobustScaler, StandardSca
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-NPZ = os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features.npz')
-OUT = os.path.join(HERE, 'kcdc_floor_sens.json')
+# KCDC_GEN selects the interaction model ('' = QGSJET-II-04, 'epos', 'sibyll'). Without KCDC_DECADE
+# the sample is the station-level one of run_kcdc_floor.py (lgE in [5, 6]); with KCDC_DECADE='14-15'
+# etc. it is a uniform random sample (at most 300,000 events) of that decade of true energy from the
+# full release, as in run_kcdc_energy.py.
+GEN = os.environ.get('KCDC_GEN', '')
+DEC = os.environ.get('KCDC_DECADE', '')
+SUF = ('_' + GEN if GEN else '') + ('_d' + DEC if DEC else '')
+if DEC:
+    NPZ = os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_%s.npz' % (GEN or 'qgs4'))
+else:
+    NPZ = os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features%s.npz' % ('_' + GEN if GEN else ''))
+OUT = os.path.join(HERE, 'kcdc_floor_sens%s.json' % SUF)
 KMAX, KQ, NB = 50, 80, 500
 rng = np.random.default_rng(0)
 
@@ -30,8 +41,13 @@ y_all = D['TrEP'] - 9.0
 ok = np.ones(len(y_all), bool)
 for k in ('Ne', 'Nmu', 'Age', 'Xc', 'Yc', 'TrNe', 'TrNm'):
     ok &= np.isfinite(D[k])
-ok &= (D['Ne'] > 1) & (D['Nmu'] > 0) & (D['TrNe'] > 1) & (D['TrNm'] > 0) & (y_all >= 5) & (y_all <= 6)
+lo, hi = ((float(DEC.split('-')[0]) - 9, float(DEC.split('-')[1]) - 9) if DEC else (5, 6))
+ok &= (D['Ne'] > 1) & (D['Nmu'] > 0) & (D['TrNe'] > 1) & (D['TrNm'] > 0) & (y_all >= lo) & (y_all <= hi)
+if DEC:
+    ok &= y_all < hi                                  # half-open decades, as in run_kcdc_energy.py
 ids = np.where(ok)[0]
+if DEC and len(ids) > 300000:
+    ids = np.sort(np.random.default_rng(1).choice(ids, 300000, replace=False))
 y = y_all[ids]
 _, shower = np.unique(np.column_stack([D['TrEP'][ids], D['TrPP'][ids].astype(np.float32)]), axis=0, return_inverse=True)
 shower = shower.ravel()
@@ -47,11 +63,13 @@ print('KASCADE: %d events, %d test queries' % (len(y), len(te)))
 
 SCALERS = {'zscore': StandardScaler, 'robust': RobustScaler,
            'rank': lambda: QuantileTransformer(output_distribution='uniform', random_state=0)}
+METRIC = {'zscore': 2, 'robust': 2, 'rank': 2, 'zscore-L1': 1}     # Euclidean, and Manhattan as a metric check
+SCALERS['zscore-L1'] = StandardScaler
 
 
-def neighbours(X, scaler):
+def neighbours(X, scaler, p=2):
     Z = scaler().fit_transform(X)
-    dist, idx = NearestNeighbors(n_neighbors=KQ).fit(Z).kneighbors(Z[te])
+    dist, idx = NearestNeighbors(n_neighbors=KQ, p=p).fit(Z).kneighbors(Z[te])
     other = shower[idx] != shower[te][:, None]
     order = np.sort(np.where(other, np.arange(KQ)[None, :], 999), 1)[:, :KMAX]
     assert (order < 999).all(), 'fewer than KMAX other-shower neighbours for some events'
@@ -68,7 +86,7 @@ mtrue = (mtrue - mtrue.mean()) / mtrue.std() * y.std() * 0.85
 out = {'n_test': int(len(te)), 'controls': {}, 'gamma': {}}
 NBR = {}
 for sname, sc in SCALERS.items():
-    d2, I = NBR[sname] = neighbours(NINE, sc)
+    d2, I = NBR[sname] = neighbours(NINE, sc, METRIC[sname])
     ctrl = []
     for s_noise in (0.10, 0.15):
         ys = mtrue + rng.normal(0, s_noise, len(y))
@@ -95,11 +113,14 @@ for _ in range(NB):
     f = floor(d2, g2, 10, rows); bf.append(f); bx.append(100 * (e[rows].std() - f) / f)
 point = floor(d2, g2, 10)
 allv = [v for r in out['gamma'].values() for v in r.values()] + [out['six_coordinates']]
-out.update({'gb_sigma': round(float(e.std()), 4), 'floor_test': round(point, 4),
+out.update({'sample': DEC or '5-6 (lgE/GeV), station-level', 'generator': GEN or 'qgs4', 'n_events': int(len(y)),
+            'gb_sigma': round(float(e.std()), 4), 'floor_test': round(point, 4),
             'floor_test_ci_shower': [round(float(v), 4) for v in np.percentile(bf, [2.5, 97.5])],
             'gb_excess_pct': round(100 * (float(e.std()) - point) / point, 2),
             'gb_excess_ci_shower': [round(float(v), 2) for v in np.percentile(bx, [2.5, 97.5])],
-            'range': [min(allv), max(allv)]})
+            'range': [min(allv), max(allv)],
+            'gb_excess_range_pct': [round(100 * (float(e.std()) - max(allv)) / max(allv), 2),
+                                    round(100 * (float(e.std()) - min(allv)) / min(allv), 2)]})
 print({k: out[k] for k in ('gb_sigma', 'floor_test', 'floor_test_ci_shower', 'gb_excess_pct',
                            'gb_excess_ci_shower', 'six_coordinates', 'range')})
 json.dump(out, open(OUT, 'w'), indent=2)

@@ -1,0 +1,102 @@
+{
+  "14-15": {
+    "n_events": 300000,
+    "n_test": 74985,
+    "target_sd": 0.263,
+    "sigma": {
+      "Ridge": 0.1632,
+      "GradBoost": 0.1481,
+      "MLP": 0.1485
+    },
+    "floor": 0.1479,
+    "floor_control_0.10": 0.1,
+    "gb_excess_pct": 0.13,
+    "gb_excess_ci": [
+      -0.61,
+      0.84
+    ],
+    "oracle": 0.0807,
+    "oracle_share_of_variance_pct": 70.3,
+    "ladder": {
+      "fit_only": 0.2017,
+      "plus_zenith": 0.1753,
+      "plus_muon_size": 0.1481
+    },
+    "frac_queries_with_other_shower_neighbours": 1.0
+  },
+  "15-16": {
+    "n_events": 300000,
+    "n_test": 74918,
+    "target_sd": 0.255,
+    "sigma": {
+      "Ridge": 0.1077,
+      "GradBoost": 0.0869,
+      "MLP": 0.0872
+    },
+    "floor": 0.0864,
+    "floor_control_0.10": 0.1004,
+    "gb_excess_pct": 0.58,
+    "gb_excess_ci": [
+      -0.29,
+      1.42
+    ],
+    "oracle": 0.0643,
+    "oracle_share_of_variance_pct": 45.3,
+    "ladder": {
+      "fit_only": 0.1579,
+      "plus_zenith": 0.1149,
+      "plus_muon_size": 0.087
+    },
+    "frac_queries_with_other_shower_neighbours": 1.0
+  },
+  "16-17": {
+    "n_events": 78023,
+    "n_test": 19470,
+    "target_sd": 0.255,
+    "sigma": {
+      "Ridge": 0.073,
+      "GradBoost": 0.0614,
+      "MLP": 0.0627
+    },
+    "floor": 0.0603,
+    "floor_control_0.10": 0.1001,
+    "gb_excess_pct": 1.82,
+    "gb_excess_ci": [
+      -0.34,
+      4.33
+    ],
+    "oracle": 0.0536,
+    "oracle_share_of_variance_pct": 23.7,
+    "ladder": {
+      "fit_only": 0.1213,
+      "plus_zenith": 0.0808,
+      "plus_muon_size": 0.0615
+    },
+    "frac_queries_with_other_shower_neighbours": 1.0
+  },
+  "17-18": {
+    "n_events": 7872,
+    "n_test": 1974,
+    "target_sd": 0.252,
+    "sigma": {
+      "Ridge": 0.0577,
+      "GradBoost": 0.0564,
+      "MLP": 0.0798
+    },
+    "floor": 0.0481,
+    "floor_control_0.10": 0.0966,
+    "gb_excess_pct": 17.24,
+    "gb_excess_ci": [
+      5.59,
+      33.71
+    ],
+    "oracle": 0.0513,
+    "oracle_share_of_variance_pct": 17.2,
+    "ladder": {
+      "fit_only": 0.1022,
+      "plus_zenith": 0.072,
+      "plus_muon_size": 0.0573
+    },
+    "frac_queries_with_other_shower_neighbours": 1.0
+  }
+}

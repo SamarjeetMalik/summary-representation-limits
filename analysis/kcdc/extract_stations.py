@@ -29,8 +29,11 @@ import uproot
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOTDIR = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
-OUT = os.path.join(ROOTDIR, 'kcdc_station_features.npz')
-OUT_DENSE = os.path.join(ROOTDIR, 'kcdc_station_dense.npz')
+GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
+SRCDIR = os.path.join(ROOTDIR, GEN) if GEN else ROOTDIR
+SUF = '_' + GEN if GEN else ''
+OUT = os.path.join(ROOTDIR, 'kcdc_station_features%s.npz' % SUF)
+OUT_DENSE = os.path.join(ROOTDIR, 'kcdc_station_dense%s.npz' % SUF)
 NCHUNK, CH = int(os.environ.get('NCHUNK', '2400')), int(os.environ.get('CHUNK', '200'))
 E_EDGES = [0, 20, 40, 60, 80, 110, 1e9]
 M_EDGES = [0, 40, 70, 100, 1e9]
@@ -39,7 +42,7 @@ X = np.full(260, np.nan); Y = np.full(260, np.nan)
 for r in csv.DictReader(open(os.path.join(HERE, 'kascade_station_coordinates.csv'))):
     X[int(r['station_id'])] = float(r['x_m']); Y[int(r['station_id'])] = float(r['y_m'])
 
-f = uproot.open(sorted(glob.glob(os.path.join(ROOTDIR, '*.root')))[0])
+f = uproot.open(sorted(glob.glob(os.path.join(SRCDIR, '*.root')))[0])
 N = f['array'].num_entries
 offs = np.linspace(0, N - CH, NCHUNK).astype(int)
 

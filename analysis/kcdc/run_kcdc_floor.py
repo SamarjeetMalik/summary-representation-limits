@@ -34,9 +34,11 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
+SUF = '_' + GEN if GEN else ''
 NPZ = os.environ.get('KCDC_STATIONS', os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc',
-                                                    'kcdc_station_features.npz'))
-OUT = os.path.join(HERE, 'kcdc_floor_results.json')
+                                                    'kcdc_station_features%s.npz' % SUF))
+OUT = os.path.join(HERE, 'kcdc_floor_results%s.json' % SUF)
 NJOBS = int(os.environ.get('NJOBS', '8')); NB = 1000
 R = {}
 

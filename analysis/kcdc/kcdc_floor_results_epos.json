@@ -1,0 +1,119 @@
+{
+  "n_events": 410595,
+  "n_showers": 378618,
+  "n_train": 307966,
+  "n_test": 102629,
+  "target_sd": 0.2626,
+  "plateau": {
+    "Ridge": 0.1633,
+    "RandomForest": 0.1495,
+    "GradBoost": 0.1484,
+    "MLP": 0.1488,
+    "kNN (k=50)": 0.1518
+  },
+  "floor": {
+    "nine": 0.1477,
+    "controls": [
+      {
+        "true_sd": 0.1,
+        "est": 0.0999
+      },
+      {
+        "true_sd": 0.15,
+        "est": 0.1499
+      }
+    ],
+    "frac_with_other_shower_neighbours": 1.0,
+    "oracle": 0.077
+  },
+  "ladder": [
+    {
+      "rung": "A",
+      "label": "four fit parameters",
+      "sigma": 0.2008
+    },
+    {
+      "rung": "B",
+      "label": "+ zenith angle",
+      "sigma": 0.1744,
+      "delta": -0.02648,
+      "delta_ci": [
+        -0.02718,
+        -0.02588
+      ]
+    },
+    {
+      "rung": "C",
+      "label": "+ core distance",
+      "sigma": 0.1743,
+      "delta": -1e-05,
+      "delta_ci": [
+        -5e-05,
+        3e-05
+      ]
+    },
+    {
+      "rung": "D",
+      "label": "+ muon size",
+      "sigma": 0.1484,
+      "delta": -0.02592,
+      "delta_ci": [
+        -0.0265,
+        -0.02537
+      ]
+    },
+    {
+      "rung": "E",
+      "label": "+ muon ratio (nine features)",
+      "sigma": 0.1484,
+      "delta": 0.0,
+      "delta_ci": [
+        -4e-05,
+        4e-05
+      ]
+    }
+  ],
+  "oracle": {
+    "sigma_nine": 0.1484,
+    "sigma_true_sizes": 0.0772,
+    "gap": 0.0712
+  },
+  "intermediate": {
+    "radial e/gamma profile": {
+      "sigma": 0.1483,
+      "delta": -0.00012,
+      "ci": [
+        -0.00023,
+        -0.0
+      ],
+      "gap_recovered_pct": 0.2
+    },
+    "radial muon profile": {
+      "sigma": 0.1458,
+      "delta": -0.00261,
+      "ci": [
+        -0.00279,
+        -0.00241
+      ],
+      "gap_recovered_pct": 3.7
+    },
+    "both radial profiles": {
+      "sigma": 0.1456,
+      "delta": -0.00282,
+      "ci": [
+        -0.00303,
+        -0.00261
+      ],
+      "gap_recovered_pct": 4.0
+    },
+    "profiles + counts, totals, timing": {
+      "sigma": 0.1442,
+      "delta": -0.00424,
+      "ci": [
+        -0.00448,
+        -0.00399
+      ],
+      "gap_recovered_pct": 6.0
+    }
+  }
+}

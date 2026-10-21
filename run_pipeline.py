@@ -33,6 +33,17 @@ def banner(msg):
     print('\n' + '=' * 72 + '\n' + msg + '\n' + '=' * 72, flush=True)
 
 
+def run_env(script, cwd, extra, label=None):
+    """run() with extra environment variables (KCDC_GEN selects the interaction model)."""
+    global ENV
+    saved = ENV
+    ENV = dict(saved, **extra)
+    try:
+        return run(script, cwd, label)
+    finally:
+        ENV = saved
+
+
 def run(script, cwd, label=None):
     t0 = time.time()
     print('  -> %-28s' % (label or script), end=' ', flush=True)
@@ -141,6 +152,23 @@ def compute():
             run(os.path.join('kcdc', 'run_kcdc_generators.py'), ANA, 'run_kcdc_generators (~1 min)')
         if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_dense.npz')):
             run(os.path.join('kcdc', 'run_kcdc_cnn.py'), ANA, 'run_kcdc_cnn (~10 min on one GPU)')
+        # the physics-journal arm: per-decade audit on all three interaction models, station-level
+        # audit on EPOS-LHC and SIBYLL-2.3d (KCDC_GEN), and the label-free checks on measured data
+        for g in ('', 'epos', 'sibyll'):
+            tag = g or 'qgs4'
+            if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_%s.npz' % tag)):
+                run_env(os.path.join('kcdc', 'run_kcdc_energy.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_energy %s (~10 min)' % tag)
+            if g and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features_%s.npz' % g)):
+                run_env(os.path.join('kcdc', 'run_kcdc_floor.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_floor %s (~15 min)' % g)
+            for dec in ('', '14-15', '15-16', '16-17'):     # floor-estimate sensitivity, per model and sample
+                src = ('kcdc_kascade_%s.npz' % tag) if dec else ('kcdc_station_features%s.npz' % ('_' + g if g else ''))
+                if (g or dec) and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', src)):
+                    run_env(os.path.join('kcdc', 'run_kcdc_floor_sens.py'), ANA, {'KCDC_GEN': g, 'KCDC_DECADE': dec},
+                            'run_kcdc_floor_sens %s %s (~3 min)' % (tag, dec or 'stations'))
+            if g and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_dense_%s.npz' % g)):
+                run_env(os.path.join('kcdc', 'run_kcdc_cnn.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_cnn %s (~10 min on one GPU)' % g)
+        if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_measured.npz')):
+            run(os.path.join('kcdc', 'run_kcdc_measured.py'), ANA, 'run_kcdc_measured (~7 min)')
     else:
         print('  KCDC npz absent: skipping the KCDC arm (see analysis/kcdc/convert_kcdc.py)')
 
@@ -149,7 +177,7 @@ def tables():
     banner('TABLES + prose macros from results.json')
     for s in ('make_tables.py', 'make_tables_extra.py', 'make_tables_compact.py',
               'make_tables_render.py', 'make_tables_journal.py', 'make_tables_tmlr.py',
-              'dedupe_values.py'):
+              'make_tables_epjc.py', 'dedupe_values.py'):
         run(s, ANA)
 
 
@@ -158,6 +186,7 @@ def figures():
     run('make_figures.py', FIG)
     run('make_figures_extra.py', FIG)
     run('make_figures_review.py', FIG)
+    run('make_figures_epjc.py', FIG)
 
 
 def verify():
@@ -185,7 +214,7 @@ def latex():
         for i in range(3 if p == 'manuscript' else 2):   # second pass resolves references
             subprocess.run(['pdflatex', '-interaction=nonstopmode', p + '.tex'], cwd=ROOT,
                            capture_output=True)
-            if p == 'manuscript' and i == 0:              # the TMLR style takes its references from manuscript.bib
+            if p == 'manuscript' and i == 0:   # both take their references from a .bib file
                 subprocess.run(['bibtex', p], cwd=ROOT, capture_output=True)
         log = open(os.path.join(ROOT, p + '.log'), encoding='latin-1').read()
         errs = log.count('\n!')

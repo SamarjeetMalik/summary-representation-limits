@@ -30,7 +30,7 @@ for p in papers:
     included = ''.join(
         io.open(os.path.join(ROOT, t + ('' if t.endswith('.tex') else '.tex')),
                 encoding='utf-8').read()
-        for t in re.findall(r'\\input\{([^}]+)\}', src)
+        for t in re.findall(r'\\(?:wide)?input\{([^}]+)\}', src)
         if os.path.exists(os.path.join(ROOT, t + ('' if t.endswith('.tex') else '.tex'))))
     text = src + included
     used = set(re.findall(r'\\ref\{([^}]+)\}', text))

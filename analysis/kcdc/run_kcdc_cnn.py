@@ -42,14 +42,16 @@ DATA = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'data', 'kcdc')
 # the larger and the differently structured encoders of the capacity check, each written to its
 # own results file so the main experiment is never overwritten.
 ENCODER = os.environ.get('ENCODER', 'small')
-OUT = os.path.join(HERE, 'kcdc_cnn_results.json' if ENCODER == 'small' else 'kcdc_cnn_%s_results.json' % ENCODER)
+GEN = os.environ.get('KCDC_GEN', '')                  # '' = QGSJET-II-04; 'epos' or 'sibyll'
+SUF = '_' + GEN if GEN else ''
+OUT = os.path.join(HERE, ('kcdc_cnn_results%s.json' % SUF) if ENCODER == 'small' else 'kcdc_cnn_%s_results%s.json' % (ENCODER, SUF))
 DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 EPOCHS, BS, NB = int(os.environ.get('EPOCHS', '20')), 512, 1000
 SEEDS = (42, 43, 44) if ENCODER == 'small' else (42, 43)
 torch.set_num_threads(int(os.environ.get('TORCH_THREADS', '8')))
 
-F = dict(np.load(os.path.join(DATA, 'kcdc_station_features.npz')))
-Dn = np.load(os.path.join(DATA, 'kcdc_station_dense.npz'))
+F = dict(np.load(os.path.join(DATA, 'kcdc_station_features%s.npz' % SUF)))
+Dn = np.load(os.path.join(DATA, 'kcdc_station_dense%s.npz' % SUF))
 assert np.array_equal(Dn['TrEP'], F['TrEP']), 'dense and feature files are not row-aligned'
 
 # ---- selection and shower-disjoint split: identical to run_kcdc_floor.py
