@@ -181,6 +181,8 @@ def compute():
             run_env(os.path.join('kcdc', 'run_kcdc_measured.py'), ANA, {'MEASURED_TEST': 'epos'},
                     'run_kcdc_measured closure test (~17 min)')
         run(os.path.join('kcdc', 'check_station_samples.py'), ANA, 'check_station_samples (~1 min)')
+        if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_measured.npz')):
+            run(os.path.join('kcdc', 'make_figure_inputs_epjc.py'), ANA, 'make_figure_inputs_epjc (~2 min)')
     else:
         print('  KCDC npz absent: skipping the KCDC arm (see analysis/kcdc/convert_kcdc.py)')
 
