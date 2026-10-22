@@ -19,6 +19,10 @@ WORD = {'14-15': 'One', '15-16': 'Two', '16-17': 'Three', '17-18': 'Four'}
 M = {}
 
 
+def np_mean(v):
+    return sum(v) / len(v)
+
+
 def f4(v):
     return '%.4f' % v
 
@@ -210,6 +214,13 @@ for g, s_, t in GENS:
         M['ep%sGnnRes' % t] = f4(G_['cnn']['residual on GB(nine)']['sigma_ensemble'])
         M['ep%sGnnVar' % t] = '%.1f' % vshare(s9_, so_, G_['cnn']['residual on GB(nine)']['sigma_ensemble'])
         M['ep%sGnnOverEng' % t] = f4(-G_['cnn']['residual on GB(nine)']['vs_engineered']['delta'])
+ap = os.path.join(K, 'kcdc_cnn_gnnabs_results.json')
+if os.path.exists(ap) and os.path.exists(os.path.join(K, 'kcdc_cnn_gnn_results.json')):
+    A_, G0 = json.load(open(ap)), json.load(open(os.path.join(K, 'kcdc_cnn_gnn_results.json')))
+    F0 = load('kcdc_floor_results.json'); s90, so0 = F0['oracle']['sigma_nine'], F0['oracle']['sigma_true_sizes']
+    M['epAbsImg'] = f4(np_mean(A_['cnn']['image only']['sigma_seeds'])); M['epCoreImg'] = f4(np_mean(G0['cnn']['image only']['sigma_seeds']))
+    M['epAbsRes'] = f4(A_['cnn']['residual on GB(nine)']['sigma_ensemble']); M['epCoreRes'] = f4(G0['cnn']['residual on GB(nine)']['sigma_ensemble'])
+    M['epAbsVar'] = '%.1f' % vshare(s90, so0, A_['cnn']['residual on GB(nine)']['sigma_ensemble'])
 nv = [float(M['ep%sStCnnVar' % t]) for _, _, t in GENS] + [float(M[k]) for k in M if k.endswith('GnnVar') and k.startswith('ep')]
 M['epNetVarMin'] = '%.0f' % min(nv); M['epNetVarMax'] = '%.0f' % max(nv)
 
@@ -311,10 +322,26 @@ $\lg(E/\mathrm{eV})$ & model & per decade & generated & flat & calibrated & raw 
     M['epFrGenThreeMin'] = f4(min(r['GradBoost']['rmse'] for r in U0)); M['epFrGenThreeMax'] = f4(max(r['GradBoost']['rmse'] for r in U0))
     M['epFrRawThreeMin'] = f4(min(r['KCDC raw']['rmse'] for r in U0)); M['epFrRawThreeMax'] = f4(max(r['KCDC raw']['rmse'] for r in U0))
 
+# ------------------------------------------------------------- within-primary resolution; measured-data distances
+wl = [EN[g][d]['by_primary']['GradBoost']['sigma'][p] < EN[g][d]['kcdc_estimate']['by_primary_calibrated']['sigma'][p]
+      for g, _, _ in GENS for d in DEC[:3] for p in EN[g][d]['by_primary']['GradBoost']['sigma']]
+M['epWithinAllLower'] = 'yes' if all(wl) else 'no'
+M['epWithinLowerN'] = str(sum(wl)); M['epWithinN'] = str(len(wl))
+sp3 = [(EN[g]['16-17']['by_primary']['GradBoost']['spread'], EN[g]['16-17']['kcdc_estimate']['by_primary_calibrated']['spread']) for g, _, _ in GENS]
+M['epSpreadThreeKcSmallerN'] = str(sum(1 for a_, b_ in sp3 if b_ < a_))
+mpp = os.path.join(K, 'kcdc_measured_results.json')
+if os.path.exists(mpp):
+    MR2 = load('kcdc_measured_results.json')
+    for v, key in (('Ne', 'Ne'), ('Age', 'Age'), ('Ze', 'Ze')):
+        ws = [row[g]['mix']['w1'][v] for row in MR2['distributions'].values() for g, _, _ in GENS]
+        M['epMeasW%sMin' % key] = ('%.1f' if v == 'Ze' else '%.3f') % min(ws)
+        M['epMeasW%sMax' % key] = ('%.1f' if v == 'Ze' else '%.3f') % max(ws)
+
 # ------------------------------------------------------------- sensitivity of the floor estimate
 SAMP = [('st', '', r'$5$--$6$ (stations)'), ('14-15', '_d14-15', r'$14$--$15$'), ('15-16', '_d15-16', r'$15$--$16$'),
         ('16-17', '_d16-17', r'$16$--$17$')]
-rows, SS = [], {}
+rows, rows2, SS = [], [], {}
+SHORT = {'QGSJET-II-04': 'QGSJET', 'EPOS-LHC': 'EPOS', 'SIBYLL-2.3d': 'SIBYLL'}
 for key, ds, lab_ in SAMP:
     first = True
     for g, s_, t in GENS:
@@ -326,38 +353,53 @@ for key, ds, lab_ in SAMP:
         kz = [G_['zscore'][k] for k in ('5', '10', '20', '50')]
         sc = [G_[k]['10'] for k in ('zscore', 'robust', 'rank')]
         nn1 = (r'$%s$' % f4(S['direct_1nn'])) if 'direct_1nn' in S else '--'
-        rows.append(r'%s & %s & $%s$ & $%s$ $[%s,%s]$ & $%s$--$%s$ & $%s$--$%s$ & $%s$ & $%s$ & %s & $%+.1f$ $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]$ \\' % (
-            lab_ if first else '', g, f4(S['gb_sigma']), f4(S['floor_test']), f4(ci[0]), f4(ci[1]),
-            f4(min(kz)), f4(max(kz)), f4(min(sc)), f4(max(sc)), f4(G_['zscore-L1']['10']), f4(S['six_coordinates']), nn1,
+        lab = lab_ if first else ''
+        rows.append(r'%s & %s & $%s$ & $[%s,%s]$ & $%s$--$%s$ & $%s$--$%s$ & $%s$ & $%s$ & %s \\' % (
+            lab, SHORT[g], f4(S['floor_test']), f4(ci[0]), f4(ci[1]),
+            f4(min(kz)), f4(max(kz)), f4(min(sc)), f4(max(sc)), f4(G_['zscore-L1']['10']), f4(S['six_coordinates']), nn1))
+        rows2.append(r'%s & %s & $%s$ & $%s$ & $%+.1f$ & $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]$ \\' % (
+            lab, SHORT[g], f4(S['gb_sigma']), f4(S['floor_test']),
             S['gb_excess_pct'], S['gb_excess_ci_shower'][0], S['gb_excess_ci_shower'][1], er[0], er[1]))
         first = False
-    rows.append(r'\midrule')
+    rows.append(r'\midrule'); rows2.append(r'\midrule')
 if SS:
     write('e_floorsens.tex', r"""\begin{table*}[tb]
+\centering\footnotesize\setlength{\tabcolsep}{5pt}
+\caption{Gradient boosting against the floor estimate on KASCADE simulation, for the
+station-level sample and each decade of true energy: its resolution, the reference floor estimate,
+its excess over that estimate in per cent with a joint shower interval, and the range of the excess
+over all estimator settings of table~\ref{tab:floorsens}}
+\label{tab:floorsensgb}
+\begin{tabular}{llccccc}
+\toprule
+sample & model & boosting & floor est. (ref.) & excess (\%%) & interval & over all settings \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[tb]
 \centering\footnotesize\setlength{\tabcolsep}{4pt}
 \caption{Sensitivity of the floor estimate on KASCADE simulation, for the station-level sample
-($\lg(E/\mathrm{GeV})\in[5,6]$) and for each decade of true energy ($\lg(E/\mathrm{eV})$; an independent
+($\lg(E/\mathrm{GeV})\in[5,6]$) and for each decade of true energy ($\lg(E/\mathrm{eV})$, an independent
 uniform sample of at most $300{,}000$ events). Reference setting: test events as queries,
 neighbours from other showers, standardised nine features, Euclidean metric, $K=10$; its interval
 resamples showers. The next columns vary one setting at a time: the neighbour range $K$, three
 feature scalings (standardised, robust, rank) at $K=10$, the Manhattan metric, and the six
 non-redundant coordinates instead of nine; each passed the known-noise control. ``Direct 1-NN'' is
-$\sqrt{\gamma(1)}$ without the extrapolation in $\delta$, which is biased high by the variation of the
-regression function between neighbours. The last two columns give the excess of gradient boosting
-over the estimate at the reference setting (with a joint shower interval) and over all settings}
+$\sqrt{\gamma(1)}$ without the extrapolation in $\delta$, biased high by the variation of the
+regression function between neighbours}
 \label{tab:floorsens}
-\setlength{\tabcolsep}{2.5pt}
-\resizebox{\textwidth}{!}{%%
-\begin{tabular}{llccccccccc}
+\begin{tabular}{llcccccccc}
 \toprule
- & & & floor est. (ref.) & $K=5$--$50$ & 3 scalings & Manhattan & six coord. & direct & \multicolumn{2}{c}{boosting above floor est. (\%%)} \\
-sample & model & boosting & with shower interval & & & & & 1-NN & ref. & all settings \\
+sample & model & reference & shower interval & $K=5$--$50$ & 3 scalings & Manhattan & six coord. & direct 1-NN \\
 \midrule
 %s
 \bottomrule
-\end{tabular}}
+\end{tabular}
 \end{table*}
-""" % '\n'.join(rows[:-1]))
+""" % ('\n'.join(rows2[:-1]), '\n'.join(rows[:-1])))
     low = [S for (k, g), S in SS.items() if k != '16-17']
     third = [S for (k, g), S in SS.items() if k == '16-17']
     M['epSensLowAbsMax'] = '%.1f' % max(max(abs(v) for v in S['gb_excess_range_pct']) for S in low)
@@ -451,6 +493,19 @@ $\lg(E_{\rm rec}/\mathrm{eV})$ & events & model & data & proton & mixture & iron
 \end{tabular}
 \end{table*}
 """ % (M['epNeCut'], M['epMeasuredKeep'], '\n'.join(rows)))
+
+# appendix copies for the one-column appendices of epjc.tex: NOT floats, typeset where written,
+# with \captionof (capt-of). sn-jnl wraps table floats in threeparttable, which [H] breaks, and
+# floating tables in a short appendix drift to later pages and leave half-empty ones.
+import re as _re
+for name in ('t_synth', 'e_ladderdec', 't_encoders', 't_floor', 'e_floorsens'):
+    src = os.path.join(TAB, name + '.tex')
+    if os.path.exists(src):
+        txt = open(src, encoding='utf-8').read()
+        txt = _re.sub(r'\\begin\{table\*?\}(\[[^\]]*\])?', r'\\par\\medskip\\noindent\\begin{minipage}{\\linewidth}', txt)
+        txt = _re.sub(r'\\end\{table\*?\}', r'\\end{minipage}\\par\\medskip', txt)
+        txt = txt.replace('\\caption{', '\\captionof{table}{')
+        open(os.path.join(TAB, 'app_' + name + '.tex'), 'w', encoding='utf-8').write(txt)
 
 existing = open(os.path.join(TAB, 'values.tex'), encoding='utf-8').read()
 open(os.path.join(TAB, 'values.tex'), 'w', encoding='utf-8').write(
