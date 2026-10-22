@@ -189,9 +189,10 @@ class GNN(nn.Module):
     """A graph network over the 252 stations. Node input: e/gamma and muon deposit, arrival time, hit
     flag, and the station position relative to the reconstructed core (dx, dy, r, all in units of
     100 m). Four rounds of messages between 8 nearest neighbours, then attention pooling."""
-    def __init__(self, use_nine, dim=128, depth=4):
+    def __init__(self, use_nine, dim=128, depth=4, core=True):
         super().__init__()
         self.use_nine = use_nine
+        self.core = core                                 # False: absolute positions (ablation)
         self.register_buffer('rc', torch.from_numpy(RC))
         self.register_buffer('pos', torch.from_numpy(POS / 100.0))
         self.register_buffer('nbr', torch.from_numpy(NBR))
@@ -208,6 +209,8 @@ class GNN(nn.Module):
     def forward(self, x, z):
         s = x[:, :, self.rc[:, 0], self.rc[:, 1]].transpose(1, 2)          # (B, 252, 4) station signals
         core = (z[:, 6:8] * self.sd[6:8] + self.mu[6:8]) / 100.0          # reconstructed core, 100 m
+        if not self.core:
+            core = torch.zeros_like(core)                                  # positions relative to array centre
         d = self.pos.unsqueeze(0) - core.unsqueeze(1)                      # (B, 252, 2)
         h = self.emb(torch.cat([s, d, d.norm(dim=-1, keepdim=True)], -1))
         for L in self.layers:
@@ -217,7 +220,8 @@ class GNN(nn.Module):
         return self.h(torch.cat([g, z], 1) if self.use_nine else g).squeeze(-1)
 
 
-NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx, 'gnn': GNN}
+NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx, 'gnn': GNN,
+        'gnnabs': lambda use_nine: GNN(use_nine, core=False)}
 # The residual network was first trained with the CNN's recipe (AdamW 1e-3, cosine, no warm-up).
 # It did not generalise: image-only 0.153-0.156 at the final epoch, worse than the small CNN, and
 # the zero-initialised correction never left zero. A second attempt at 3e-4 with warm-up and
@@ -225,7 +229,7 @@ NETS = {'small': Net, 'resnet': ResNet, 'settx': SetTx, 'gnn': GNN}
 # (kcdc_cnn_resnet_lr1e-3.log, enc_resnet_v2.log). The larger encoders are therefore trained with
 # early stopping on a validation set: a tenth of the TRAINING showers is held out, the weights
 # with the best validation error are kept, and the test set plays no part in the choice.
-LR = float(os.environ.get('LR', {'small': 1e-3, 'resnet': 3e-4, 'settx': 5e-4, 'gnn': 5e-4}[ENCODER]))
+LR = float(os.environ.get('LR', {'small': 1e-3, 'resnet': 3e-4, 'settx': 5e-4, 'gnn': 5e-4, 'gnnabs': 5e-4}[ENCODER]))
 WARMUP = ENCODER == 'resnet'
 EARLY = ENCODER != 'small'
 

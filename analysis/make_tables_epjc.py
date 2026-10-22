@@ -165,8 +165,8 @@ rows = rows[:-1]
 write('e_stations.tex', r'''\begin{table*}[tb]
 \centering\small
 \caption{What the measured station signals add, on three hadronic-interaction models
-(for $\lg(E/\mathrm{GeV})\in[5,6]$ a uniform sample of $2{,}400$ blocks of $200$ events from each
-release, for $[6,7]$ up to $400{,}000$ events drawn at random from that window; split by shower). Boosting and floor estimate on the nine reconstructed features; the
+(for $\lg(E/\mathrm{GeV})\in[5,6]$ $2{,}400$ evenly spaced blocks of $200$ events from each
+release, about $410{,}000$ after the selection, for $[6,7]$ up to $400{,}000$ events drawn at random from that window; split by shower). Boosting and floor estimate on the nine reconstructed features; the
 oracle with true sizes; boosting on the nine features plus all station features (radial
 e/$\gamma$ and muon profiles, hit counts, totals and timing spread); and a convolutional network on
 the measured station image, trained as a correction to boosting (ensemble of three seeds). The last
@@ -259,6 +259,58 @@ M['epThrData'] = '%.2f' % (100 * TH['data_frac_below_3.5'])
 M['epThrProtonMin'] = '%.0f' % (100 * min(v['proton'] for v in TH['models'].values()))
 M['epThrProtonMax'] = '%.0f' % (100 * max(v['proton'] for v in TH['models'].values()))
 
+# ------------------------------------------------------------- without knowing the true decade
+FR = {g: (os.path.join(K, 'kcdc_fullrange_results%s.json' % s_), os.path.join(K, 'kcdc_fullrange_results%s_flat.json' % s_))
+      for g, s_, _ in GENS}
+if all(os.path.exists(a) and os.path.exists(b) for a, b in FR.values()):
+    rows, infl, kov, shr, fex = [], {}, [], {}, []
+    for d in DEC:
+        first = True
+        for g, s_, t in GENS:
+            U, W = json.load(open(FR[g][0])), json.load(open(FR[g][1]))
+            u, w = U['by_true_decade'][d], W['by_true_decade'][d]
+            pdg = EN[g][d]['sigma']['GradBoost']
+            infl.setdefault(d, []).append(100 * (w['GradBoost']['rmse'] / pdg - 1))
+            if d in ('15-16', '16-17'):
+                kov.append(100 * (w['KCDC raw']['rmse'] / w['GradBoost']['rmse'] - 1))
+            shr.setdefault(d, []).append(w['oracle_share_of_variance_pct_rmse'])
+            rows.append(r'%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%.0f\%%$ & $%.0f\%%$ \\' % (
+                (r'$%s$--$%d$' % (DECLAB[d], int(DECLAB[d]) + 1)) if first else '', g, f4(pdg),
+                f4(u['GradBoost']['rmse']), f4(w['GradBoost']['rmse']), f4(w['KCDC calibrated']['rmse']),
+                f4(w['KCDC raw']['rmse']), EN[g][d]['oracle_share_of_variance_pct'], w['oracle_share_of_variance_pct_rmse']))
+            first = False
+        rows.append(r'\midrule')
+    for g, _, _ in GENS:
+        U = json.load(open(FR[g][0])); fex.append(U['gb_excess_overall_pct'])
+    write('e_fullrange.tex', r"""\begin{table*}[tb]
+\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\caption{The audit without knowing the true-energy decade. Models trained once on the whole release
+($10^{14}$--$10^{18}$\,eV, up to $2\times10^6$ events, split by shower) and scored by decade of true
+energy (root-mean-square error of $\lg E$), against boosting trained within each decade
+(table~\ref{tab:decades}). ``Generated'': training on the simulated $E^{-2}$ spectrum; ``flat'':
+training weighted to a flat distribution in $\lg E$. KCDC: its estimate calibrated by boosting on
+$E_{\rm rec}$ alone (flat weights) and raw. Last two columns: share of error variance lost to
+reconstruction (oracle with true sizes) with the decade known and with flat full-range training}
+\label{tab:fullrange}
+\begin{tabular}{llccccccc}
+\toprule
+ & & \multicolumn{3}{c}{boosting, nine features} & \multicolumn{2}{c}{KCDC estimate} & \multicolumn{2}{c}{lost to reconstruction} \\
+$\lg(E/\mathrm{eV})$ & model & per decade & generated & flat & calibrated & raw & per decade & flat \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table*}
+""" % '\n'.join(rows[:-1]))
+    for d, key in (('14-15', 'One'), ('15-16', 'Two'), ('16-17', 'Three'), ('17-18', 'Four')):
+        M['epFrShare%sMin' % key] = '%.0f' % min(shr[d]); M['epFrShare%sMax' % key] = '%.0f' % max(shr[d])
+        M['epFrInfl%sMin' % key] = '%.0f' % min(infl[d]); M['epFrInfl%sMax' % key] = '%.0f' % max(infl[d])
+    M['epFrKcdcOverMin'] = '%.0f' % min(kov); M['epFrKcdcOverMax'] = '%.0f' % max(kov)
+    M['epFrFloorExMin'] = '%.1f' % min(fex); M['epFrFloorExMax'] = '%.1f' % max(fex)
+    U0 = [json.load(open(FR[g][0]))['by_true_decade']['16-17'] for g, _, _ in GENS]
+    M['epFrGenThreeMin'] = f4(min(r['GradBoost']['rmse'] for r in U0)); M['epFrGenThreeMax'] = f4(max(r['GradBoost']['rmse'] for r in U0))
+    M['epFrRawThreeMin'] = f4(min(r['KCDC raw']['rmse'] for r in U0)); M['epFrRawThreeMax'] = f4(max(r['KCDC raw']['rmse'] for r in U0))
+
 # ------------------------------------------------------------- sensitivity of the floor estimate
 SAMP = [('st', '', r'$5$--$6$ (stations)'), ('14-15', '_d14-15', r'$14$--$15$'), ('15-16', '_d15-16', r'$15$--$16$'),
         ('16-17', '_d16-17', r'$16$--$17$')]
@@ -270,9 +322,13 @@ for key, ds, lab_ in SAMP:
         if not os.path.exists(fp):
             continue
         S = json.load(open(fp)); SS[(key, g)] = S
-        ci, rg, er = S['floor_test_ci_shower'], S['range'], S['gb_excess_range_pct']
-        rows.append(r'%s & %s & $%s$ & $%s$ & $[%s,%s]$ & $[%s,%s]$ & $%+.1f\%%$ $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]\%%$ \\' % (
-            lab_ if first else '', g, f4(S['gb_sigma']), f4(S['floor_test']), f4(ci[0]), f4(ci[1]), f4(rg[0]), f4(rg[1]),
+        ci, er, G_ = S['floor_test_ci_shower'], S['gb_excess_range_pct'], S['gamma']
+        kz = [G_['zscore'][k] for k in ('5', '10', '20', '50')]
+        sc = [G_[k]['10'] for k in ('zscore', 'robust', 'rank')]
+        nn1 = (r'$%s$' % f4(S['direct_1nn'])) if 'direct_1nn' in S else '--'
+        rows.append(r'%s & %s & $%s$ & $%s$ $[%s,%s]$ & $%s$--$%s$ & $%s$--$%s$ & $%s$ & $%s$ & %s & $%+.1f$ $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]$ \\' % (
+            lab_ if first else '', g, f4(S['gb_sigma']), f4(S['floor_test']), f4(ci[0]), f4(ci[1]),
+            f4(min(kz)), f4(max(kz)), f4(min(sc)), f4(max(sc)), f4(G_['zscore-L1']['10']), f4(S['six_coordinates']), nn1,
             S['gb_excess_pct'], S['gb_excess_ci_shower'][0], S['gb_excess_ci_shower'][1], er[0], er[1]))
         first = False
     rows.append(r'\midrule')
@@ -283,19 +339,23 @@ if SS:
 ($\lg(E/\mathrm{GeV})\in[5,6]$) and for each decade of true energy ($\lg(E/\mathrm{eV})$; an independent
 uniform sample of at most $300{,}000$ events). Reference setting: test events as queries,
 neighbours from other showers, standardised nine features, Euclidean metric, $K=10$; its interval
-resamples showers. The settings range covers $K=5$ to $50$, three feature scalings, the Manhattan
-metric and the six non-redundant coordinates, each of which passed the known-noise control. The
-last two columns give the excess of gradient boosting over the estimate at the reference setting
-(with a joint shower interval) and over the whole settings range}
+resamples showers. The next columns vary one setting at a time: the neighbour range $K$, three
+feature scalings (standardised, robust, rank) at $K=10$, the Manhattan metric, and the six
+non-redundant coordinates instead of nine; each passed the known-noise control. ``Direct 1-NN'' is
+$\sqrt{\gamma(1)}$ without the extrapolation in $\delta$, which is biased high by the variation of the
+regression function between neighbours. The last two columns give the excess of gradient boosting
+over the estimate at the reference setting (with a joint shower interval) and over all settings}
 \label{tab:floorsens}
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{llcccccc}
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\textwidth}{!}{%%
+\begin{tabular}{llccccccccc}
 \toprule
-sample & model & boosting & floor (ref.) & shower interval & settings range & excess (ref.) & excess (settings) \\
+ & & & floor est. (ref.) & $K=5$--$50$ & 3 scalings & Manhattan & six coord. & direct & \multicolumn{2}{c}{boosting above floor est. (\%%)} \\
+sample & model & boosting & with shower interval & & & & & 1-NN & ref. & all settings \\
 \midrule
 %s
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table*}
 """ % '\n'.join(rows[:-1]))
     low = [S for (k, g), S in SS.items() if k != '16-17']
@@ -309,6 +369,15 @@ sample & model & boosting & floor (ref.) & shower interval & settings range & ex
     M['epSensCiExclMax'] = '%.1f' % max([S['gb_excess_ci_shower'][0] for S in SS.values() if S['gb_excess_ci_shower'][0] > 0] or [0])
     wset = [S['range'][1] - S['range'][0] for S in SS.values()]; wci = [S['floor_test_ci_shower'][1] - S['floor_test_ci_shower'][0] for S in SS.values()]
     M['epSensSetWider'] = str(sum(1 for a, b in zip(wset, wci) if a > b))
+    def norank(S):
+        v = [x for k, r in S['gamma'].items() if k != 'rank' for x in r.values()] + [S['six_coordinates']]
+        return 100 * (S['gb_sigma'] - max(v)) / max(v), 100 * (S['gb_sigma'] - min(v)) / min(v)
+    nr = [norank(S) for S in third]
+    M['epSensThirdNoRankLo'] = '%+.1f' % min(a_ for a_, _ in nr); M['epSensThirdNoRankHi'] = '%+.1f' % max(b_ for _, b_ in nr)
+    M['epSensSixMaxPct'] = '%.1f' % max(100 * abs(S['six_coordinates'] - S['floor_test']) / S['floor_test'] for S in SS.values())
+    nn = [100 * (S['direct_1nn'] / S['floor_test'] - 1) for S in SS.values() if 'direct_1nn' in S]
+    if nn:
+        M['epSensNnMin'] = '%.0f' % min(nn); M['epSensNnMax'] = '%.0f' % max(nn)
     M['epSensManhattanMax'] = '%.1f' % max(100 * abs(S['gamma']['zscore-L1']['10'] - S['gamma']['zscore']['10']) / S['gamma']['zscore']['10'] for S in SS.values())
 
 # ------------------------------------------------------------- closure test of the measured-data checks

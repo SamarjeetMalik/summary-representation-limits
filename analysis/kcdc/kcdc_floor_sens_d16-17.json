@@ -68,7 +68,9 @@
       "50": 0.0612
     }
   },
+  "direct_1nn": 0.0679,
   "six_coordinates": 0.0601,
+  "direct_1nn_six": 0.0656,
   "sample": "16-17",
   "generator": "qgs4",
   "n_events": 78023,

@@ -1,0 +1,144 @@
+{
+  "flat_training_weights": true,
+  "n_events": 2000000,
+  "n_test": 499202,
+  "overall": {
+    "GradBoost": {
+      "n": 499202,
+      "sd": 0.1474,
+      "rmse": 0.1554,
+      "mean": 0.0493
+    },
+    "oracle": {
+      "n": 499202,
+      "sd": 0.0785,
+      "rmse": 0.08,
+      "mean": 0.0155
+    },
+    "KCDC calibrated": {
+      "n": 499202,
+      "sd": 0.1588,
+      "rmse": 0.169,
+      "mean": 0.0577
+    },
+    "KCDC raw": {
+      "n": 499202,
+      "sd": 0.1849,
+      "rmse": 0.1868,
+      "mean": 0.0263
+    }
+  },
+  "by_true_decade": {
+    "14-15": {
+      "GradBoost": {
+        "n": 427512,
+        "sd": 0.1516,
+        "rmse": 0.1628,
+        "mean": 0.0592
+      },
+      "oracle": {
+        "n": 427512,
+        "sd": 0.0795,
+        "rmse": 0.0816,
+        "mean": 0.0183
+      },
+      "KCDC calibrated": {
+        "n": 427512,
+        "sd": 0.162,
+        "rmse": 0.1762,
+        "mean": 0.0693
+      },
+      "KCDC raw": {
+        "n": 427512,
+        "sd": 0.194,
+        "rmse": 0.1958,
+        "mean": 0.0265
+      },
+      "oracle_share_of_variance_pct_rmse": 74.9
+    },
+    "15-16": {
+      "GradBoost": {
+        "n": 64466,
+        "sd": 0.1038,
+        "rmse": 0.1044,
+        "mean": -0.011
+      },
+      "oracle": {
+        "n": 64466,
+        "sd": 0.0714,
+        "rmse": 0.0714,
+        "mean": -0.0013
+      },
+      "KCDC calibrated": {
+        "n": 64466,
+        "sd": 0.1196,
+        "rmse": 0.1203,
+        "mean": -0.0123
+      },
+      "KCDC raw": {
+        "n": 64466,
+        "sd": 0.1197,
+        "rmse": 0.1217,
+        "mean": 0.022
+      },
+      "oracle_share_of_variance_pct_rmse": 53.2
+    },
+    "16-17": {
+      "GradBoost": {
+        "n": 6582,
+        "sd": 0.0688,
+        "rmse": 0.0688,
+        "mean": -0.0025
+      },
+      "oracle": {
+        "n": 6582,
+        "sd": 0.0592,
+        "rmse": 0.0593,
+        "mean": -0.0014
+      },
+      "KCDC calibrated": {
+        "n": 6582,
+        "sd": 0.0841,
+        "rmse": 0.0842,
+        "mean": -0.0025
+      },
+      "KCDC raw": {
+        "n": 6582,
+        "sd": 0.0887,
+        "rmse": 0.1028,
+        "mean": 0.052
+      },
+      "oracle_share_of_variance_pct_rmse": 25.7
+    },
+    "17-18": {
+      "GradBoost": {
+        "n": 642,
+        "sd": 0.0628,
+        "rmse": 0.0629,
+        "mean": -0.0031
+      },
+      "oracle": {
+        "n": 642,
+        "sd": 0.0565,
+        "rmse": 0.0566,
+        "mean": -0.0014
+      },
+      "KCDC calibrated": {
+        "n": 642,
+        "sd": 0.0735,
+        "rmse": 0.074,
+        "mean": 0.0079
+      },
+      "KCDC raw": {
+        "n": 642,
+        "sd": 0.0703,
+        "rmse": 0.1063,
+        "mean": 0.0797
+      },
+      "oracle_share_of_variance_pct_rmse": 19.0
+    }
+  },
+  "floor_overall": 0.1449,
+  "floor_control_0.10": 0.0996,
+  "gb_excess_overall_pct": 7.25
+}

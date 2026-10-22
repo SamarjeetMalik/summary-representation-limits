@@ -182,7 +182,7 @@ if os.path.exists(FI):
 # ---- fig_e6_floorsens: excess over the floor estimate, reference setting and all settings
 fig, a = plt.subplots(figsize=(7.0, 2.4))
 k, ticks, tl = 0, [], []
-for key, ds, lab_ in (('st', '', r'$[5,6]$ GeV'), ('14-15', '_d14-15', '14-15'), ('15-16', '_d15-16', '15-16'), ('16-17', '_d16-17', '16-17')):
+for key, ds, lab_ in (('st', '', r'$\lg(E/\mathrm{GeV})\in[5,6]$'), ('14-15', '_d14-15', '14-15'), ('15-16', '_d15-16', '15-16'), ('16-17', '_d16-17', '16-17')):
     for g, s, mk, c in GENS:
         fp = os.path.join(K, 'kcdc_floor_sens%s%s.json' % (s, ds))
         if not os.path.exists(fp):

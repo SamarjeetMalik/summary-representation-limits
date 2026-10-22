@@ -68,7 +68,9 @@
       "50": 0.1484
     }
   },
+  "direct_1nn": 0.1493,
   "six_coordinates": 0.1475,
+  "direct_1nn_six": 0.1495,
   "sample": "5-6 (lgE/GeV), station-level",
   "generator": "epos",
   "n_events": 410595,

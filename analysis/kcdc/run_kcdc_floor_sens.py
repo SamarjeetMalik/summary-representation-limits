@@ -98,8 +98,12 @@ for sname, sc in SCALERS.items():
     out['gamma'][sname] = {str(K): round(floor(d2, g2, K), 4) for K in (5, 10, 20, 50)}
     print('%-7s controls %s  floor %s' % (sname, [c['est'] for c in ctrl], out['gamma'][sname]))
 
+# direct nearest-neighbour estimate without the linear extrapolation in delta: sqrt(gamma(1))
+d2z, Iz = NBR['zscore']
+out['direct_1nn'] = round(float(np.sqrt(np.mean(0.5 * (y[te] - y[Iz[:, 0]]) ** 2))), 4)
 d6, I6 = neighbours(SIX, StandardScaler)
 out['six_coordinates'] = round(floor(d6, 0.5 * (y[te][:, None] - y[I6]) ** 2, 10), 4)
+out['direct_1nn_six'] = round(float(np.sqrt(np.mean(0.5 * (y[te] - y[I6[:, 0]]) ** 2))), 4)
 
 # gradient boosting and the joint shower-level bootstrap (K = 10, standardised)
 e = GBR(max_iter=600, learning_rate=.06, random_state=42).fit(NINE[tr], y[tr]).predict(NINE[te]) - y[te]

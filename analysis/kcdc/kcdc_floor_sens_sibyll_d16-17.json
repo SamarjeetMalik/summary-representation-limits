@@ -68,7 +68,9 @@
       "50": 0.0638
     }
   },
+  "direct_1nn": 0.0713,
   "six_coordinates": 0.062,
+  "direct_1nn_six": 0.0683,
   "sample": "16-17",
   "generator": "sibyll",
   "n_events": 36940,

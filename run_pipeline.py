@@ -181,6 +181,11 @@ def compute():
             run_env(os.path.join('kcdc', 'run_kcdc_measured.py'), ANA, {'MEASURED_TEST': 'epos'},
                     'run_kcdc_measured closure test (~17 min)')
         run(os.path.join('kcdc', 'check_station_samples.py'), ANA, 'check_station_samples (~1 min)')
+        for g in ('', 'epos', 'sibyll'):                    # the audit without knowing the true decade
+            if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_kascade_%s.npz' % (g or 'qgs4'))):
+                for flat in ('', '1'):
+                    run_env(os.path.join('kcdc', 'run_kcdc_fullrange.py'), ANA, {'KCDC_GEN': g, 'FLAT': flat},
+                            'run_kcdc_fullrange %s%s (~15 min)' % (g or 'qgs4', ' flat' if flat else ''))
         if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_measured.npz')):
             run(os.path.join('kcdc', 'make_figure_inputs_epjc.py'), ANA, 'make_figure_inputs_epjc (~2 min)')
     else:

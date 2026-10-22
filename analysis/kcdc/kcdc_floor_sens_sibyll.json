@@ -68,7 +68,9 @@
       "50": 0.1495
     }
   },
+  "direct_1nn": 0.1511,
   "six_coordinates": 0.1493,
+  "direct_1nn_six": 0.1505,
   "sample": "5-6 (lgE/GeV), station-level",
   "generator": "sibyll",
   "n_events": 411954,
