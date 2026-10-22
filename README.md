@@ -32,6 +32,23 @@ manuscript reports, so each claim can be checked against them without the data. 
 the results, tables and figures requires the data (the pipeline checks its hashes and event
 counts first and stops if they are absent).
 
+## Checking the paper's numbers without the data
+
+Every result file the manuscript quotes is in this repository. Without downloading any data, the
+tables and the number macros can be regenerated from them:
+
+    cd analysis
+    for s in make_tables.py make_tables_extra.py make_tables_compact.py make_tables_render.py              make_tables_journal.py make_tables_tmlr.py make_tables_epjc.py dedupe_values.py; do
+        python $s
+    done
+
+With the manuscript source (the LaTeX files submitted with the paper) in the repository root,
+`python analysis/verify_numbers.py <manuscript>.tex` then checks every number in the prose against
+the results files.
+
+This checks that the paper reports what the result files contain. It does not re-run the analysis;
+for that, download the data (below) and run `python run_pipeline.py --full`.
+
 ## Where each table and figure comes from
 
 Every row is: item in the paper, block of `analysis/results.json` (or other results file), script
@@ -58,6 +75,9 @@ that writes the block. Tables are typeset by `analysis/make_tables*.py`, figures
 | Three interaction models by decade of energy (plateau, floor, ladder, oracle) | `kcdc/kcdc_energy_results[_epos,_sibyll].json` | `kcdc/run_kcdc_energy.py` (`KCDC_GEN`) |
 | Station signals on three interaction models | `kcdc/kcdc_floor_results[_epos,_sibyll].json`, `kcdc/kcdc_cnn_results[_epos,_sibyll].json`, `kcdc/kcdc_sample_check.json` | `kcdc/run_kcdc_floor.py`, `kcdc/run_kcdc_cnn.py` (`KCDC_GEN`), `kcdc/check_station_samples.py` |
 | Sensitivity of the floor estimate, per model and decade | `kcdc/kcdc_floor_sens[_gen][_dDEC].json` | `kcdc/run_kcdc_floor_sens.py` (`KCDC_GEN`, `KCDC_DECADE`) |
+| Floor estimate in the KASCADE geometry (semi-synthetic known floor) | `kcdc/kcdc_floor_benchmark[_gen][_dDEC].json` | `kcdc/run_kcdc_floor_benchmark.py`, `tools/run_floor_benchmark_all.sh` |
+| GRAPES-3 selection on fixed populations | `selection_fixedpop` | `run_selection_fixedpop.py` |
+| Training over the whole energy range | `kcdc/kcdc_fullrange_results[_gen][_flat].json` | `kcdc/run_kcdc_fullrange.py` (`FLAT=1` for flat weights) |
 | Measured KASCADE data: data against simulation, muon scale, probe; closure test | `kcdc/kcdc_measured_results.json`, `kcdc/kcdc_measured_test_epos.json` | `kcdc/run_kcdc_measured.py` (`MEASURED_TEST=epos` for the closure test) |
 | Earlier block-sampled check of two further interaction models (superseded) | `kcdc/kcdc_generators.json` | `kcdc/run_kcdc_generators.py` |
 | Coverage with shower-level splits | `cqr_shower` | `run_cqr_shower.py` |

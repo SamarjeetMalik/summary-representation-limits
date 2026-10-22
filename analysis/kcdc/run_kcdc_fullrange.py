@@ -80,8 +80,21 @@ fl = lambda g2: float(np.sqrt(max(np.polyfit(d2.mean(0), g2.mean(0), 1)[1], 0)))
 mt = 0.9 * Z[:, 0] + 0.35 * Z[:, 1] + 0.08 * np.tanh(2 * Z[:, 3]); mt = (mt - mt.mean()) / mt.std() * y.std() * 0.85
 ys = mt + rng.normal(0, 0.10, len(y)); ctrl = fl(0.5 * (ys[te][good][:, None] - ys[I]) ** 2)
 assert abs(ctrl - 0.10) / 0.10 < 0.10, 'floor control failed'
-out['floor_overall'] = round(fl(0.5 * (yt[good][:, None] - y[I]) ** 2), 4); out['floor_control_0.10'] = round(ctrl, 4)
+g2 = 0.5 * (yt[good][:, None] - y[I]) ** 2
+out['floor_overall'] = round(fl(g2), 4); out['floor_control_0.10'] = round(ctrl, 4)
 out['gb_excess_overall_pct'] = round(100 * (out['overall']['GradBoost']['rmse'] / out['floor_overall'] - 1), 2)
-print('floor overall', out['floor_overall'], 'GB rmse', out['overall']['GradBoost']['rmse'], 'excess %', out['gb_excess_overall_pct'])
+# shower-bootstrap interval of the floor estimate and of boosting's excess over it (joint resampling)
+eg = res['GradBoost'][good]
+ugs, ivs = np.unique(sh[te][good], return_inverse=True)
+ords = np.argsort(ivs, kind='stable'); sts = np.r_[0, np.cumsum(np.bincount(ivs))]
+flr = lambda rows: float(np.sqrt(max(np.polyfit(d2[rows].mean(0), g2[rows].mean(0), 1)[1], 0)))
+bf, bx = [], []
+for b in range(200):
+    rows = np.concatenate([ords[sts[i]:sts[i + 1]] for i in np.random.default_rng(900 + b).integers(0, len(ugs), len(ugs))])
+    f_ = flr(rows); bf.append(f_); bx.append(100 * (np.sqrt(np.mean(eg[rows] ** 2)) / f_ - 1))
+out['floor_overall_ci'] = [round(float(v), 4) for v in np.percentile(bf, [2.5, 97.5])]
+out['gb_excess_overall_ci'] = [round(float(v), 2) for v in np.percentile(bx, [2.5, 97.5])]
+print('floor overall', out['floor_overall'], out['floor_overall_ci'], 'GB rmse', out['overall']['GradBoost']['rmse'],
+      'excess %', out['gb_excess_overall_pct'], out['gb_excess_overall_ci'])
 json.dump(out, open(OUT, 'w'), indent=2)
 print('wrote', OUT)

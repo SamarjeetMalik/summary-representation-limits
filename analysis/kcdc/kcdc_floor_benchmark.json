@@ -1,0 +1,62 @@
+{
+  "sample": "5-6 (lgE/GeV), station-level",
+  "generator": "qgs4",
+  "n_events": 409848,
+  "n_test": 102483,
+  "replicates": 20,
+  "true_floor": 0.14806,
+  "control_constant_0.10": 0.1005,
+  "settings": {
+    "zscore_K5": {
+      "mean": 0.14864,
+      "sd": 0.00074,
+      "bias_pct": 0.39
+    },
+    "zscore_K10": {
+      "mean": 0.14851,
+      "sd": 0.0005,
+      "bias_pct": 0.3
+    },
+    "zscore_K20": {
+      "mean": 0.14863,
+      "sd": 0.00037,
+      "bias_pct": 0.38
+    },
+    "zscore_K50": {
+      "mean": 0.14876,
+      "sd": 0.00022,
+      "bias_pct": 0.48
+    },
+    "robust_K10": {
+      "mean": 0.14834,
+      "sd": 0.00049,
+      "bias_pct": 0.19
+    },
+    "rank_K10": {
+      "mean": 0.14898,
+      "sd": 0.00047,
+      "bias_pct": 0.62
+    },
+    "zscore-L1_K10": {
+      "mean": 0.14877,
+      "sd": 0.00044,
+      "bias_pct": 0.48
+    },
+    "six_K10": {
+      "mean": 0.14845,
+      "sd": 0.00052,
+      "bias_pct": 0.26
+    },
+    "direct_1nn": {
+      "mean": 0.15049,
+      "sd": 0.00044,
+      "bias_pct": 1.64
+    }
+  },
+  "reference_interval_coverage": 0.85,
+  "reference_interval_mean_width": 0.00177,
+  "settings_bias_range_pct": [
+    0.19,
+    0.62
+  ]
+}

@@ -39,7 +39,7 @@ ax[0].set_ylabel('boosting above floor estimate (%)')
 ax[0].set_xticks([14, 15, 16, 17, 18])
 ax[0].legend(frameon=False, fontsize=7, loc='upper left')
 ax[1].set_xlabel(r'$\log_{10}(E/\mathrm{eV})$, true')
-ax[1].set_ylabel('variance lost to reconstruction (%)')
+ax[1].set_ylabel('oracle-referenced gap (%)')
 ax[1].set_xticks([14, 15, 16, 17, 18]); ax[1].set_ylim(0, 100)
 for a in ax:
     a.set_xlim(14, 18)
@@ -195,6 +195,7 @@ for key, ds, lab_ in (('st', '', r'$\lg(E/\mathrm{GeV})\in[5,6]$'), ('14-15', '_
     k += 0.7
 a.axhline(0, color='0.5', lw=0.6, ls='--'); a.set_xticks(ticks); a.set_xticklabels(tl, fontsize=7)
 a.set_ylabel('boosting above floor est. (%)'); a.set_xlabel(r'sample ($\lg(E/\mathrm{eV})$ decades unless marked)')
-a.legend(handles=[Line2D([], [], color=c, marker=mk, lw=0.9, label=g) for g, _, mk, c in GENS] +
-         [Line2D([], [], color='0.5', lw=6, alpha=0.3, label='range over estimator settings')], fontsize=6, frameon=False, ncol=4, loc='lower left')
+a.legend(handles=[Line2D([], [], color=c, marker=mk, lw=0, label=g) for g, _, mk, c in GENS] +
+         [Line2D([], [], color='0.3', marker='o', lw=0.9, label='reference setting, 95% shower interval'),
+          Line2D([], [], color='0.5', lw=6, alpha=0.3, label='range over estimator settings')], fontsize=6, frameon=False, ncol=3, loc='lower left')
 fig.tight_layout(); fig.savefig(os.path.join(HERE, 'fig_e6_floorsens.pdf')); print('  figures/fig_e6_floorsens.pdf')

@@ -23,6 +23,12 @@ def np_mean(v):
     return sum(v) / len(v)
 
 
+def s1(v):
+    """signed one-decimal value without a negative zero"""
+    v = 0.0 if abs(v) < 0.05 else v
+    return ('%+.1f' % v) if v else '0.0'
+
+
 def f4(v):
     return '%.4f' % v
 
@@ -70,18 +76,18 @@ write('e_decades.tex', r'''\begin{table*}[tb]
 \centering\small
 \caption{The audit by decade of true primary energy on three hadronic-interaction models.
 Events are a uniform random sample of each release (at most $300{,}000$ per decade), split
-$75/25$ by CORSIKA shower. $\sigma$ is the root-mean-square error of $\lg(E/\mathrm{GeV})$ for
-gradient boosting on the nine reconstructed features; the floor estimate is the Gamma test with
+$75/25$ by CORSIKA shower. $\sigma$ is the standard deviation of the residual in $\lg(E/\mathrm{GeV})$
+for gradient boosting on the nine reconstructed features (models trained within the decade); the floor estimate is the Gamma test with
 test events as queries and neighbours from other showers; the excess is that of gradient
 boosting over the floor estimate with a shower-bootstrap interval. The oracle replaces the
-reconstructed electron and muon sizes by their true values; the last column is the share of the
-error variance that the observation-and-reconstruction chain loses,
-$(\sigma^2-\sigma_{\rm oracle}^2)/\sigma^2$}
+reconstructed electron and muon sizes by their true values; the last column is the
+oracle-referenced error-variance gap $(\sigma^2-\sigma_{\rm oracle}^2)/\sigma^2$. The highest decade is
+data-limited and is not interpreted}
 \label{tab:decades}
 \footnotesize\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrcccccc}
 \toprule
-$\lg(E/\mathrm{eV})$ & model & events & boosting & floor est. & excess & interval & oracle & lost \\
+$\lg(E/\mathrm{eV})$ & model & events & boosting & floor est. & excess & interval & oracle & oracle gap \\
 \midrule
 %s
 \bottomrule
@@ -152,9 +158,11 @@ for wsuf, wkey, wlab in WIN:
         eg = inter['radial e/gamma profile']
         cnn = C['cnn']['residual on GB(nine)']['sigma_ensemble']
         img = C['cnn']['image only']['sigma_ensemble']
-        rows.append(r'%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%.1f\%%$ & $%.1f\%%$ \\' % (
-            wlab if first else '', g, num(F['n_test']), f4(F['plateau']['GradBoost']), f4(F['floor']['nine']), f4(so),
-            f4(allst['sigma']), f4(cnn), vshare(s9, so, C['gb_engineered']), vshare(s9, so, cnn)))
+        ve = C['cnn']['residual on GB(nine)']['vs_engineered']
+        rows.append(r'%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & $%.1f\%%$ & $%.1f\%%$ & $%+.4f$ $[%+.4f,%+.4f]$ \\' % (
+            wlab if first else '', g.split('-')[0], num(F['n_test']), f4(F['plateau']['GradBoost']), f4(F['floor']['nine']), f4(so),
+            f4(allst['sigma']), f4(cnn), vshare(s9, so, C['gb_engineered']), vshare(s9, so, cnn),
+            ve['delta'], ve['ci'][0], ve['ci'][1]))
         M.update({'ep%sStGB' % t: f4(F['plateau']['GradBoost']), 'ep%sStFloor' % t: f4(F['floor']['nine']),
                   'ep%sStOracle' % t: f4(so), 'ep%sStAll' % t: f4(allst['sigma']), 'ep%sStCnn' % t: f4(cnn),
                   'ep%sStImg' % t: f4(img),
@@ -168,20 +176,22 @@ for wsuf, wkey, wlab in WIN:
 rows = rows[:-1]
 write('e_stations.tex', r'''\begin{table*}[tb]
 \centering\small
-\caption{What the measured station signals add, on three hadronic-interaction models
+\caption{What simulated station-level observables add, on three hadronic-interaction models
 (for $\lg(E/\mathrm{GeV})\in[5,6]$ $2{,}400$ evenly spaced blocks of $200$ events from each
 release, about $410{,}000$ after the selection, for $[6,7]$ up to $400{,}000$ events drawn at random from that window; split by shower). Boosting and floor estimate on the nine reconstructed features; the
 oracle with true sizes; boosting on the nine features plus all station features (radial
 e/$\gamma$ and muon profiles, hit counts, totals and timing spread); and a convolutional network on
-the measured station image, trained as a correction to boosting (ensemble of three seeds). The last
-two columns give the share of the variance gap to the oracle closed by the station features and
-by the network}
+the simulated station image, trained as a correction to boosting (ensemble of three seeds). The last
+columns give the share of the variance gap to the oracle closed by the station features and by the
+network, and the network's change in $\sigma$ relative to the station features with a paired
+shower-bootstrap interval. All $\sigma$ are standard deviations of the residual}
 \label{tab:stations}
 \footnotesize\setlength{\tabcolsep}{4pt}
-\begin{tabular}{llrccccccc}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{llrcccccccc}
 \toprule
- & & & & floor & & + station & + image & \multicolumn{2}{c}{variance gap closed} \\
-$\lg(E/\mathrm{GeV})$ & model & test events & boosting & estimate & oracle & features & network & features & network \\
+ & & & & floor & & + station & + image & \multicolumn{2}{c}{gap closed} & network $-$ features \\
+$\lg(E/\mathrm{GeV})$ & model & test & boosting & estimate & oracle & features & network & features & network & (paired interval) \\
 \midrule
 %s
 \bottomrule
@@ -243,7 +253,7 @@ write('e_kcdcest.tex', r"""\begin{table*}[tb]
 \caption{KASCADE's own energy estimate $E_{\rm rec}$ (a fixed function of $\log_{10}\Ne$, $\log_{10}N_\mu$ and
 zenith angle) against gradient boosting on the nine features and the floor estimate, on the same
 test events. Raw: root-mean-square error of $\lg E_{\rm rec}$ with its mean bias; calibrated: boosting
-on $E_{\rm rec}$ alone, which removes bias and nonlinearity. The last three columns give the spread
+on $E_{\rm rec}$ alone, which removes bias and nonlinearity (standard deviation of the residual). The last three columns give the spread
 (largest minus smallest) of the mean bias across the five primaries for boosting, for the calibrated
 KCDC estimate and for the oracle with true sizes}
 \label{tab:kcdcest}
@@ -318,6 +328,11 @@ $\lg(E/\mathrm{eV})$ & model & per decade & generated & flat & calibrated & raw 
         M['epFrInfl%sMin' % key] = '%.0f' % min(infl[d]); M['epFrInfl%sMax' % key] = '%.0f' % max(infl[d])
     M['epFrKcdcOverMin'] = '%.0f' % min(kov); M['epFrKcdcOverMax'] = '%.0f' % max(kov)
     M['epFrFloorExMin'] = '%.1f' % min(fex); M['epFrFloorExMax'] = '%.1f' % max(fex)
+    UU = [json.load(open(FR[g][0])) for g, _, _ in GENS]
+    if all('gb_excess_overall_ci' in u_ for u_ in UU):
+        M['epFrExCiLo'] = '%.1f' % min(u_['gb_excess_overall_ci'][0] for u_ in UU)
+        M['epFrExCiHi'] = '%.1f' % max(u_['gb_excess_overall_ci'][1] for u_ in UU)
+        M['epFrFloorMin'] = f4(min(u_['floor_overall'] for u_ in UU)); M['epFrFloorMax'] = f4(max(u_['floor_overall'] for u_ in UU))
     U0 = [json.load(open(FR[g][0]))['by_true_decade']['16-17'] for g, _, _ in GENS]
     M['epFrGenThreeMin'] = f4(min(r['GradBoost']['rmse'] for r in U0)); M['epFrGenThreeMax'] = f4(max(r['GradBoost']['rmse'] for r in U0))
     M['epFrRawThreeMin'] = f4(min(r['KCDC raw']['rmse'] for r in U0)); M['epFrRawThreeMax'] = f4(max(r['KCDC raw']['rmse'] for r in U0))
@@ -337,10 +352,64 @@ if os.path.exists(mpp):
         M['epMeasW%sMin' % key] = ('%.1f' if v == 'Ze' else '%.3f') % min(ws)
         M['epMeasW%sMax' % key] = ('%.1f' if v == 'Ze' else '%.3f') % max(ws)
 
+# ------------------------------------------------------------- GRAPES-3 selection with fixed populations
+RJ = json.load(open(os.path.join(HERE, 'results.json')))
+SF = RJ.get('selection_fixedpop')
+if SF:
+    M['epSelAcc'] = '%.1f' % SF['accepted_pct']
+    M['epSelAll'] = f4(SF['operational']['all_events'][0]); M['epSelAccS'] = f4(SF['operational']['accepted_events'][0])
+    M['epSelWithin'] = f4(SF['fixed_accepted']['trained_within_cut'][0])
+    M['epSelDiff'] = '%+.5f' % SF['fixed_accepted']['within_minus_all'][0]
+    M['epSelDiffLo'] = '%+.5f' % SF['fixed_accepted']['within_minus_all'][1][0]
+    M['epSelDiffHi'] = '%+.5f' % SF['fixed_accepted']['within_minus_all'][1][1]
+    M['epSelRej'] = f4(SF['rejected_events'][0])
+    M['epSelFloorAcc'] = f4(SF['floor_accepted'][0]); M['epSelFloorRej'] = f4(SF['floor_rejected'][0])
+    M['epSelFloorAccLo'] = f4(SF['floor_accepted'][1][0]); M['epSelFloorAccHi'] = f4(SF['floor_accepted'][1][1])
+    M['epSelFloorRejLo'] = f4(SF['floor_rejected'][1][0]); M['epSelFloorRejHi'] = f4(SF['floor_rejected'][1][1])
+    M['epSelSpreadAll'] = '%.3f' % SF['bias_spread_all_events_trained_on_all']
+    M['epSelSpreadAccAll'] = '%.3f' % SF['bias_spread_accepted']['trained_on_all']
+    M['epSelSpreadAccWithin'] = '%.3f' % SF['bias_spread_accepted']['trained_within_cut']
+RR, RC = RJ['rendering'], RJ['shower_crossfit']['rendering']
+fl4 = RJ['bayes']['four']['rms_floor']
+rr = [('A', r'four fit parameters $\phi$, gradient boosting', 'A_scalars4', 'A_scalars4'),
+      ('B', r'CNN on image rendered from $\phi$', 'B_rendered', 'B_rendered'),
+      ('C', r'CNN on rendered image $+$ 16 measured muon counts', 'C_rendered_muon', 'C_rendered_muon'),
+      ("C$'$", r'$\phi$ $+$ 16 muon counts, gradient boosting', 'tab_phi_mu', None),
+      ("C$''$", r"as C$'$ $+$ zenith angle", 'tab_phi_mu_theta', None),
+      ('D', r'nine features, gradient boosting', 'D_nine', 'D_nine')]
+# predictions written down before the runs (the same constants as make_tables_journal.py)
+PRED = {'A': 0.1234, 'B': 0.1234, 'C': 0.1063, 'D': 0.1019}
+rows = []
+for lab, desc, kr, kc in rr:
+    rows.append(r'%s & %s & %s & $%s$ & %s \\' % (lab, desc, ('$%s$' % f4(PRED[lab])) if lab in PRED else '---',
+                                                f4(RR[kr]), ('$%s$' % f4(RC[kc])) if kc else '---'))
+write('e_render.tex', r"""\begin{table*}[tb]
+\centering\small
+\caption{The GRAPES-3 rendering experiment (60{,}000 training events). Shower cross-fit: every event is
+predicted by a model that saw no copy of its shower (primary); random split: the archived protocol, which
+leaks shower copies. Rows C$'$ and C$''$ are tabular controls added afterwards; the predicted column was written down before
+rows A to D were run. The four-parameter floor estimate is
+$%s$. Under the cross-fit the CNN on the rendered image is $%s$ below gradient boosting on the four
+parameters (paired interval $[%s,%s]$): a difference between learners on the same information, which
+Proposition~\ref{prop:bound} permits}
+\label{tab:render}
+\begin{tabular}{llccc}
+\toprule
+ & input and model & predicted & random split & shower cross-fit \\
+\midrule
+%s
+\bottomrule
+\end{tabular}
+\end{table*}
+""" % (f4(fl4), f4(-RC['B_minus_A']), f4(-RC['B_minus_A_ci'][1]), f4(-RC['B_minus_A_ci'][0]), '\n'.join(rows)))
+KR = json.load(open(os.path.join(K, 'kcdc_results.json')))['selection']
+kd = [100 * abs(v['central half of age']['sigma_trained_within'] / v['central half of age']['sigma_trained_all'] - 1) for v in KR.values()]
+M['epKSelRetrainMax'] = '%.1f' % max(kd)
+
 # ------------------------------------------------------------- sensitivity of the floor estimate
 SAMP = [('st', '', r'$5$--$6$ (stations)'), ('14-15', '_d14-15', r'$14$--$15$'), ('15-16', '_d15-16', r'$15$--$16$'),
         ('16-17', '_d16-17', r'$16$--$17$')]
-rows, rows2, SS = [], [], {}
+rows, rows2, rows3, SS, BMS = [], [], [], {}, {}
 SHORT = {'QGSJET-II-04': 'QGSJET', 'EPOS-LHC': 'EPOS', 'SIBYLL-2.3d': 'SIBYLL'}
 for key, ds, lab_ in SAMP:
     first = True
@@ -357,22 +426,38 @@ for key, ds, lab_ in SAMP:
         rows.append(r'%s & %s & $%s$ & $[%s,%s]$ & $%s$--$%s$ & $%s$--$%s$ & $%s$ & $%s$ & %s \\' % (
             lab, SHORT[g], f4(S['floor_test']), f4(ci[0]), f4(ci[1]),
             f4(min(kz)), f4(max(kz)), f4(min(sc)), f4(max(sc)), f4(G_['zscore-L1']['10']), f4(S['six_coordinates']), nn1))
-        rows2.append(r'%s & %s & $%s$ & $%s$ & $%+.1f$ & $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]$ \\' % (
+        bp = os.path.join(K, 'kcdc_floor_benchmark%s%s.json' % (s_, ds))
+        BM = json.load(open(bp)) if os.path.exists(bp) else None
+        if BM:
+            BMS[(key, g)] = BM
+            bset = BM['settings']
+            rows3.append(r'%s & %s & $%s$ & $%+.1f$ & $%+.1f$ to $%+.1f$ & $%+.1f$ & $%+.1f$ & $%+.1f$ & $%+.1f$ & $%+.1f$ & $%.0f\%%$ \\' % (
+                lab, SHORT[g], f4(BM['true_floor']), bset['zscore_K10']['bias_pct'],
+                min(bset['zscore_K%d' % k]['bias_pct'] for k in (5, 10, 20, 50)),
+                max(bset['zscore_K%d' % k]['bias_pct'] for k in (5, 10, 20, 50)),
+                bset['robust_K10']['bias_pct'], bset['rank_K10']['bias_pct'], bset['zscore-L1_K10']['bias_pct'],
+                bset['six_K10']['bias_pct'], bset['direct_1nn']['bias_pct'], 100 * BM['reference_interval_coverage']))
+        rows2.append(r'%s & %s & $%s$ & $%s$ & $%+.1f$ & $[%+.1f,%+.1f]$ & $[%+.1f,%+.1f]$ & %s \\' % (
             lab, SHORT[g], f4(S['gb_sigma']), f4(S['floor_test']),
-            S['gb_excess_pct'], S['gb_excess_ci_shower'][0], S['gb_excess_ci_shower'][1], er[0], er[1]))
+            S['gb_excess_pct'], S['gb_excess_ci_shower'][0], S['gb_excess_ci_shower'][1], er[0], er[1],
+            (r'$%+.1f$' % BM['settings']['zscore_K10']['bias_pct']) if BM else '--'))
         first = False
-    rows.append(r'\midrule'); rows2.append(r'\midrule')
+    rows.append(r'\midrule'); rows2.append(r'\midrule'); rows3.append(r'\midrule')
 if SS:
     write('e_floorsens.tex', r"""\begin{table*}[tb]
 \centering\footnotesize\setlength{\tabcolsep}{5pt}
 \caption{Gradient boosting against the floor estimate on KASCADE simulation, for the
 station-level sample and each decade of true energy: its resolution, the reference floor estimate,
-its excess over that estimate in per cent with a joint shower interval, and the range of the excess
-over all estimator settings of table~\ref{tab:floorsens}}
+its excess over that estimate in per cent with a joint shower interval, the range of the excess over
+all estimator settings of table~\ref{tab:floorsens}, and the bias of the reference estimate measured
+on a semi-synthetic target with a known floor in the same sample (table~\ref{tab:floorbench}). A
+positive bias means the estimate reads high, so the excess of boosting over the true floor is larger
+than over the estimate by about that amount}
 \label{tab:floorsensgb}
-\begin{tabular}{llccccc}
+\begin{tabular}{llcccccc}
 \toprule
-sample & model & boosting & floor est. (ref.) & excess (\%%) & interval & over all settings \\
+ & & & & \multicolumn{3}{c}{boosting above floor est. (\%%)} & bias of est. \\
+sample & model & boosting & floor est. (ref.) & ref. & interval & all settings & (benchmark, \%%) \\
 \midrule
 %s
 \bottomrule
@@ -400,6 +485,42 @@ sample & model & reference & shower interval & $K=5$--$50$ & 3 scalings & Manhat
 \end{tabular}
 \end{table*}
 """ % ('\n'.join(rows2[:-1]), '\n'.join(rows[:-1])))
+    if BMS:
+        write('e_floorbench.tex', r"""\begin{table*}[tb]
+\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\caption{Accuracy of the floor estimate in the KASCADE geometry. For each sample the real nine
+features are kept and the target is replaced by $g(X)+s(X)\,\xi$, with $g$ and $s$ learned from the
+real target (gradient boosting for the conditional mean and for the squared residual) and $\xi$ standard
+normal, drawn once per CORSIKA shower; the true floor $\sqrt{\langle s^2\rangle}$ is then known. Mean
+bias of the estimate in per cent over REPS noise replicates for each setting of
+table~\ref{tab:floorsens}, and the coverage of the reference setting's 95\% shower interval}
+\label{tab:floorbench}
+\begin{tabular}{llccccccccc}
+\toprule
+ & & & \multicolumn{7}{c}{bias of the floor estimate (\%)} & coverage \\
+sample & model & true floor & reference & $K=5$--$50$ & robust & rank & Manhattan & six coord. & 1-NN & of interval \\
+\midrule
+ROWS
+\bottomrule
+\end{tabular}
+\end{table*}
+""" .replace('REPS', str(next(iter(BMS.values()))['replicates'])).replace('ROWS', '\n'.join(rows3[:-1])))
+        lowb = [v for (k, g), v in BMS.items() if k != '16-17']; thb = [v for (k, g), v in BMS.items() if k == '16-17']
+        M['epBenchRefLowMin'] = '%+.1f' % min(v['settings']['zscore_K10']['bias_pct'] for v in lowb)
+        M['epBenchRefLowMax'] = '%+.1f' % max(v['settings']['zscore_K10']['bias_pct'] for v in lowb)
+        M['epBenchRefThirdMin'] = '%+.1f' % min(v['settings']['zscore_K10']['bias_pct'] for v in thb)
+        M['epBenchRefThirdMax'] = '%+.1f' % max(v['settings']['zscore_K10']['bias_pct'] for v in thb)
+        M['epBenchRankThirdMax'] = '%+.0f' % max(v['settings']['rank_K10']['bias_pct'] for v in thb)
+        M['epBenchNnMax'] = '%+.0f' % max(v['settings']['direct_1nn']['bias_pct'] for v in BMS.values())
+        M['epBenchCovMin'] = '%.0f' % (100 * min(v['reference_interval_coverage'] for v in BMS.values()))
+        M['epBenchCovMax'] = '%.0f' % (100 * max(v['reference_interval_coverage'] for v in BMS.values()))
+        M['epBenchReps'] = str(next(iter(BMS.values()))['replicates'])
+        M['epBenchN'] = str(len(BMS))
+        nonrank = [v['settings'][k]['bias_pct'] for v in lowb for k in v['settings'] if k not in ('rank_K10', 'direct_1nn')]
+        M['epBenchLowAllMin'] = s1(min(nonrank)); M['epBenchLowAllMax'] = '%+.1f' % max(nonrank)
+        # boosting's excess over the TRUE floor implied by the benchmark bias of the reference estimate
+        imp = [S['gb_excess_pct'] + BMS[k_]['settings']['zscore_K10']['bias_pct'] for k_, S in SS.items() if k_ in BMS and k_[0] != '16-17']
+        M['epBenchImpliedMin'] = s1(min(imp)); M['epBenchImpliedMax'] = '%+.1f' % max(imp)
     low = [S for (k, g), S in SS.items() if k != '16-17']
     third = [S for (k, g), S in SS.items() if k == '16-17']
     M['epSensLowAbsMax'] = '%.1f' % max(max(abs(v) for v in S['gb_excess_range_pct']) for S in low)
@@ -498,7 +619,7 @@ $\lg(E_{\rm rec}/\mathrm{eV})$ & events & model & data & proton & mixture & iron
 # with \captionof (capt-of). sn-jnl wraps table floats in threeparttable, which [H] breaks, and
 # floating tables in a short appendix drift to later pages and leave half-empty ones.
 import re as _re
-for name in ('t_synth', 'e_ladderdec', 't_encoders', 't_floor', 'e_floorsens'):
+for name in ('t_synth', 'e_ladderdec', 't_encoders', 't_floor', 'e_floorsens', 'e_floorbench'):
     src = os.path.join(TAB, name + '.tex')
     if os.path.exists(src):
         txt = open(src, encoding='utf-8').read()

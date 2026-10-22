@@ -443,12 +443,12 @@ if os.path.exists(kcp):
 
 # ------------------------------------------------------------- larger encoders on the KASCADE image
 kfp = os.path.join(HERE, 'kcdc', 'kcdc_floor_results.json')
-encs = {e: os.path.join(HERE, 'kcdc', 'kcdc_cnn_%s_results.json' % e) for e in ('resnet', 'settx', 'gnn')}
+encs = {e: os.path.join(HERE, 'kcdc', 'kcdc_cnn_%s_results.json' % e) for e in ('resnet', 'settx', 'gnn', 'gnnabs')}
 encs = {e: p for e, p in encs.items() if os.path.exists(p)}        # whichever capacity checks have been run
 if os.path.exists(kfp) and encs:
     KFl = json.load(open(kfp)); s9_, so_ = KFl['oracle']['sigma_nine'], KFl['oracle']['sigma_true_sizes']
     small = json.load(open(os.path.join(HERE, 'kcdc', 'kcdc_cnn_results.json')))
-    lab = {'small': 'small CNN', 'resnet': 'residual network', 'settx': 'station transformer', 'gnn': 'graph network'}
+    lab = {'small': 'small CNN', 'resnet': 'residual network', 'settx': 'station transformer', 'gnn': 'graph network', 'gnnabs': 'graph net., absolute pos.'}
     rows_ = []
     allE = {'small': small, **{e: json.load(open(p)) for e, p in encs.items()}}
     for e, J in allE.items():
@@ -459,7 +459,7 @@ if os.path.exists(kfp) and encs:
             f4(np_mean(rs)), f4(min(rs)), f4(max(rs)),
             100 * (s9_ ** 2 - np_mean(rs) ** 2) / (s9_ ** 2 - so_ ** 2)))
         if e != 'small':
-            p_ = {'resnet': 'encRes', 'settx': 'encTx', 'gnn': 'encGnn'}[e]
+            p_ = {'resnet': 'encRes', 'settx': 'encTx', 'gnn': 'encGnn', 'gnnabs': 'encGnnAbs'}[e]
             M.update({p_ + 'Params': '%.1f' % (npar / 1e6), p_ + 'Img': f4(np_mean(io)), p_ + 'Resid': f4(np_mean(rs)),
                       p_ + 'ImgMin': f4(min(io)), p_ + 'ImgMax': f4(max(io)),
                       p_ + 'GapVar': '%.0f' % (100 * (s9_ ** 2 - np_mean(rs) ** 2) / (s9_ ** 2 - so_ ** 2))})

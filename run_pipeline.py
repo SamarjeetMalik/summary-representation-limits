@@ -139,6 +139,7 @@ def compute():
                        capture_output=True)
     run('run_shower_crossfit.py', ANA, 'run_shower_crossfit (~5 min; needs the five fold runs)')
     run('run_crossfit_secondary.py', ANA, 'run_crossfit_secondary (~4 min)')
+    run('run_selection_fixedpop.py', ANA, 'run_selection_fixedpop (~5 min)')
     run('run_cqr_shower.py', ANA, 'run_cqr_shower (~1 min)')
     if os.environ.get('SKIP_KCDC'):                 # KASCADE is untouched by GRAPES-3 changes
         print('  SKIP_KCDC set: keeping analysis/kcdc/*.json as they are')
@@ -160,6 +161,11 @@ def compute():
                 run_env(os.path.join('kcdc', 'run_kcdc_energy.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_energy %s (~10 min)' % tag)
             if g and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', 'kcdc_station_features_%s.npz' % g)):
                 run_env(os.path.join('kcdc', 'run_kcdc_floor.py'), ANA, {'KCDC_GEN': g}, 'run_kcdc_floor %s (~15 min)' % g)
+            for dec in ('', '14-15', '15-16', '16-17'):     # floor accuracy on a semi-synthetic known-floor target
+                src = ('kcdc_kascade_%s.npz' % tag) if dec else ('kcdc_station_features%s.npz' % ('_' + g if g else ''))
+                if os.path.exists(os.path.join(ROOT, 'data', 'kcdc', src)):
+                    run_env(os.path.join('kcdc', 'run_kcdc_floor_benchmark.py'), ANA, {'KCDC_GEN': g, 'KCDC_DECADE': dec},
+                            'run_kcdc_floor_benchmark %s %s (~10 min)' % (tag, dec or 'stations'))
             for dec in ('', '14-15', '15-16', '16-17'):     # floor-estimate sensitivity, per model and sample
                 src = ('kcdc_kascade_%s.npz' % tag) if dec else ('kcdc_station_features%s.npz' % ('_' + g if g else ''))
                 if (g or dec) and os.path.exists(os.path.join(ROOT, 'data', 'kcdc', src)):

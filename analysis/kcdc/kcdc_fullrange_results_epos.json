@@ -1,4 +1,5 @@
 {
+  "flat_training_weights": false,
   "n_events": 2000000,
   "n_test": 499202,
   "overall": {
@@ -139,5 +140,13 @@
   },
   "floor_overall": 0.1449,
   "floor_control_0.10": 0.0996,
-  "gb_excess_overall_pct": 0.83
+  "gb_excess_overall_pct": 0.83,
+  "floor_overall_ci": [
+    0.1444,
+    0.1453
+  ],
+  "gb_excess_overall_ci": [
+    0.55,
+    1.12
+  ]
 }
