@@ -79,7 +79,8 @@ Events are a uniform random sample of each release (at most $300{,}000$ per deca
 $75/25$ by CORSIKA shower. $\sigma$ is the standard deviation of the residual in $\lg(E/\mathrm{GeV})$
 for gradient boosting on the nine reconstructed features (models trained within the decade); the floor estimate is the Gamma test with
 test events as queries and neighbours from other showers; the excess is that of gradient
-boosting over the floor estimate with a shower-bootstrap interval. The oracle replaces the
+boosting over the floor estimate with a shower-bootstrap interval, which reflects shower sampling
+only and under-covers (table~\ref{tab:floorbench}). The oracle replaces the
 reconstructed electron and muon sizes by their true values; the last column is the
 oracle-referenced error-variance gap $(\sigma^2-\sigma_{\rm oracle}^2)/\sigma^2$. The highest decade is
 data-limited and is not interpreted}
@@ -452,7 +453,8 @@ its excess over that estimate in per cent with a joint shower interval, the rang
 all estimator settings of table~\ref{tab:floorsens}, and the bias of the reference estimate measured
 on a semi-synthetic target with a known floor in the same sample (table~\ref{tab:floorbench}). A
 positive bias means the estimate reads high, so the excess of boosting over the true floor is larger
-than over the estimate by about that amount}
+than over the estimate by about that amount. Shower intervals reflect sampling only and should be read
+as lower limits on the uncertainty}
 \label{tab:floorsensgb}
 \begin{tabular}{llcccccc}
 \toprule
